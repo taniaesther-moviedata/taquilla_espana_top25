@@ -36,8 +36,9 @@ Instalación: `pip install -r requirements.txt`
 
 - La película se identifica entre fines de semana por `titulo_original` + `distribuidora`.
 - `titulo_mostrar` pone el artículo delante («Bola negra, La» → «La bola negra»). Lo que la regla no resuelve (tildes, nombres propios) se corrige en `data/correcciones_titulos.csv`.
-- La variación `+/-%` del PDF suele ser 1 a 5 puntos más negativa que la calculada con el histórico. Parece deberse a que Rentrak compara con la cifra revisada del fin de semana anterior, no con la publicada; es una hipótesis sin confirmar.
-- Algunos PDFs traen acumulados menores que la recaudación del fin de semana (p. ej. Superthings, 23-25 oct.) o variaciones de espectadores incoherentes con la recaudación (Resident Evil, 16-18 oct.). Son errores de origen: se mantienen tal cual y no se usan en el boletín.
+- **Variación semanal:** el boletín la calcula con el histórico (cifras exactas, coherentes con la comparación a 4 semanas). El `+/-%` del PDF se guarda solo como contraste: viene redondeado a entero, y el fin de semana anterior que implica es de media un 0,7 % mayor que el publicado (posibles correcciones de cifras provisionales). El validador avisa si la diferencia supera 3 puntos.
+- **Acumulado:** total desde el estreno, días laborables y preestrenos incluidos. Verificado con la carga inicial: en 83 pares de fines de semana consecutivos, acumulado nuevo ≥ acumulado anterior + fin de semana, y la diferencia (lunes a jueves) es de mediana el 59 % del fin de semana anterior. En estrenos, el acumulado es igual al fin de semana (20 de 45) o mayor por preestrenos y pases especiales (21 de 45).
+- **Errores de origen:** cuatro estrenos traen un acumulado menor que su propio fin de semana (Superthings −97.898 €, Karateka −13.861 €, Digger −8.314 €, El precio de la red −1.414 €). En Superthings, el % de la semana siguiente confirma la cifra del fin de semana, así que el erróneo es el acumulado. También hay variaciones de espectadores incoherentes con la recaudación (Resident Evil, 16-18 oct.). Se mantienen tal cual; el acumulado no se usa en el boletín.
 
 ## Registro
 
