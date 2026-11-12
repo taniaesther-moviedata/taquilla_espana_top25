@@ -18,7 +18,7 @@ HISTORICO = RAIZ / "data" / "processed" / "top25_historico.csv"
 TOTALES = RAIZ / "data" / "processed" / "totales_pdf.csv"
 
 CLAVE_PELICULA = ["titulo_original", "distribuidora"]
-MARGEN_VARIACION = 0.01  # 1 punto porcentual
+MARGEN_VARIACION = 0.03  # 3 puntos: el % del PDF viene redondeado a entero
 
 
 def comprobar_estructura(h, errores):
