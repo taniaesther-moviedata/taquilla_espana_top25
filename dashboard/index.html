@@ -107,9 +107,9 @@
   </section>
 
   <section class="tq-section" id="trayectoria">
-    <h2 class="tq-h2">Trayectoria de las cinco primeras</h2>
-    <p class="tq-note">Recaudación de cada fin de semana. Un hueco indica que la película no estaba en el Top 25 o aún no se había estrenado.</p>
-    <div class="tq-chart" data-draw="grafico-trayectoria" data-source="trayectoria finde_totales" role="img" aria-label="Recaudación por fin de semana de las cinco películas que encabezan el ranking">—</div>
+    <h2 class="tq-h2">Trayectoria de las cinco primeras con más de un fin de semana en cartel</h2>
+    <p class="tq-note">Recaudación de cada fin de semana; el número es su posición actual. Los estrenos se dejan fuera porque solo tienen un punto. Un hueco indica que la película no estaba en el Top 25 o aún no se había estrenado.</p>
+    <div class="tq-chart" data-draw="grafico-trayectoria" data-source="trayectoria finde_totales" role="img" aria-label="Recaudación por fin de semana de las cinco películas mejor situadas con más de un fin de semana en cartel">—</div>
     <ul class="tq-legend" data-draw="leyenda-trayectoria" data-source="trayectoria"></ul>
   </section>
 
@@ -252,8 +252,8 @@
 
   dash.calc('trayectoria', {
     inputs: ['historico'],
-    title: 'Trayectoria de las cinco primeras',
-    description: 'Recaudación en los últimos cinco fines de semana de las películas que ocupan las posiciones 1 a 5.',
+    title: 'Trayectoria de las cinco primeras en su segunda semana o más',
+    description: 'Recaudación en los últimos cinco fines de semana de las cinco películas mejor situadas que llevan al menos dos fines de semana en cartel.',
     fn: (historico) => {
       const findes = [...new Set(historico.map((f) => f.finde_inicio))].sort();
       const ultimos = new Set(findes.slice(-5));
@@ -261,7 +261,9 @@
       const clave = (f) => `${f.titulo_original}|${f.distribuidora}`;
       const primeras = new Map(
         historico
-          .filter((f) => f.finde_inicio === actual && Number(f.rank) <= 5)
+          .filter((f) => f.finde_inicio === actual && Number(f.semana_en_cartel) >= 2)
+          .sort((a, b) => Number(a.rank) - Number(b.rank))
+          .slice(0, 5)
           .map((f) => [clave(f), {titulo: f.titulo_mostrar, rank: Number(f.rank)}]),
       );
       return historico
@@ -491,7 +493,7 @@
 
     const svg = d3.select(el).append('svg')
       .attr('width', '100%').attr('height', alto).attr('viewBox', `0 0 ${ancho} ${alto}`)
-      .attr('role', 'img').attr('aria-label', 'Recaudación por fin de semana de las cinco películas que encabezan el ranking');
+      .attr('role', 'img').attr('aria-label', 'Recaudación por fin de semana de las cinco películas mejor situadas con más de un fin de semana en cartel');
     const tooltip = prepararTooltip(el);
 
     // Se mide la etiqueta más ancha del eje para fijar el margen izquierdo.
