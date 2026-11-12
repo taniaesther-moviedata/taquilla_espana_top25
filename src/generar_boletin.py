@@ -15,6 +15,7 @@ guardan al doble de resolución para que el texto se vea nítido.
 Las métricas siguen las definiciones de las reglas del proyecto (sección 5).
 """
 
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -90,6 +91,22 @@ def fmt_pct(v):
     p = round(v * 100)
     signo = "+" if p > 0 else "−" if p < 0 else ""
     return f"{signo}{abs(p)} %"
+
+
+def fmt_eje(v):
+    """Etiqueta corta para el límite de un eje: 8 M€, 400 mil €."""
+    if v >= 1e6:
+        return f"{v / 1e6:g} M€".replace(".", ",")
+    return f"{v / 1e3:g} mil €"
+
+
+def techo_redondo(v):
+    """Menor valor «redondo» (1, 1,5, 2, 2,5, 3, 4, 5, 6, 8 o 10 × 10^n) que no baja de v."""
+    escala = 10 ** math.floor(math.log10(v))
+    for m in (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10):
+        if m * escala >= v:
+            return m * escala
+    return 10 * escala
 
 
 def color_signo(v):
@@ -224,17 +241,16 @@ def recortar(ax, s, ancho_max, tam, fuente=None, peso="normal"):
 
 
 def tarjeta(ax, x, y, w, h, relleno="white", borde=TAN):
-    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=14",
-                                linewidth=1.2, edgecolor=borde, facecolor=relleno))
+    return ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=14",
+                                       linewidth=1.2, edgecolor=borde, facecolor=relleno))
 
 
 def cabecera(ax, b, subtitulo=None):
-    texto(ax, MARGEN, 56, "BOLETÍN SEMANAL · TAQUILLA EN ESPAÑA", 13, LAVANDA, peso="semibold")
-    texto(ax, MARGEN, 84, "Top 25 del fin de semana", 40, NEGRO, SERIF)
-    texto(ax, MARGEN, 160, f"Fin de semana del {periodo_largo(b.finde_inicio, b.finde_fin)}",
+    texto(ax, MARGEN, 56, "Top 25 del fin de semana", 40, NEGRO, SERIF)
+    texto(ax, MARGEN, 132, f"Fin de semana del {periodo_largo(b.finde_inicio, b.finde_fin)}",
           17, GRIS_TEXTO)
     if subtitulo:
-        texto(ax, MARGEN, 206, subtitulo, 22, NEGRO, SERIF)
+        texto(ax, MARGEN, 178, subtitulo, 22, NEGRO, SERIF)
 
 
 def pie(ax, pagina, total=3):
@@ -311,13 +327,13 @@ def pagina_1(b):
     lider = r["lider"]
 
     # Número 1
-    tarjeta(ax, MARGEN, 214, ANCHO - 2 * MARGEN, 160, relleno=CARDO, borde=CARDO)
-    texto(ax, MARGEN + 32, 236, "Nº 1 DEL FIN DE SEMANA", 12, LAVANDA_TEXTO, peso="semibold")
-    texto(ax, MARGEN + 32, 258, recortar(ax, lider["titulo_mostrar"], 880, 38, SERIF), 38, NEGRO, SERIF)
+    tarjeta(ax, MARGEN, 186, ANCHO - 2 * MARGEN, 160, relleno=CARDO, borde=CARDO)
+    texto(ax, MARGEN + 32, 208, "Nº 1 DEL FIN DE SEMANA", 12, LAVANDA_TEXTO, peso="semibold")
+    texto(ax, MARGEN + 32, 230, recortar(ax, lider["titulo_mostrar"], 880, 38, SERIF), 38, NEGRO, SERIF)
     detalle = (f"{fmt_millones(lider['recaudacion_eur'])} · {int(lider['semana_en_cartel'])}.ª semana"
                f" en cartel · {round(r['cuota_lider'] * 100)} % del Top 25 · "
                f"{fmt_entero(lider['cines'])} cines")
-    texto(ax, MARGEN + 32, 330, detalle, 15, NEGRO)
+    texto(ax, MARGEN + 32, 302, detalle, 15, NEGRO)
 
     # Cifras clave
     hueco = 16
@@ -333,21 +349,21 @@ def pagina_1(b):
     ]
     for k, (etq, valor, delta, nota, signo) in enumerate(tarjetas):
         x = MARGEN + k * (w + hueco)
-        tarjeta(ax, x, 396, w, 146)
-        texto(ax, x + 20, 414, etq, 11.5, GRIS_TEXTO)
+        tarjeta(ax, x, 368, w, 146)
+        texto(ax, x + 20, 386, etq, 11.5, GRIS_TEXTO)
         color_valor = color_signo(r["var_4"]) if k == 2 else NEGRO
-        texto(ax, x + 20, 440, valor, 30, color_valor, SERIF)
+        texto(ax, x + 20, 412, valor, 30, color_valor, SERIF)
         if delta:
-            t = texto(ax, x + 20, 500, delta, 12.5, color_signo(signo) if signo is not None else NEGRO,
+            t = texto(ax, x + 20, 472, delta, 12.5, color_signo(signo) if signo is not None else NEGRO,
                       peso="semibold")
             rend = fig.canvas.get_renderer()
             dw = t.get_window_extent(renderer=rend).width
-            texto(ax, x + 20 + dw + 6, 500, nota, 11.5, GRIS_TEXTO)
+            texto(ax, x + 20 + dw + 6, 472, nota, 11.5, GRIS_TEXTO)
         else:
-            texto(ax, x + 20, 500, nota, 11.5, GRIS_TEXTO)
+            texto(ax, x + 20, 472, nota, 11.5, GRIS_TEXTO)
 
     # Top 10
-    texto(ax, MARGEN, 566, "Top 10", 22, NEGRO, SERIF)
+    texto(ax, MARGEN, 538, "Top 10", 22, NEGRO, SERIF)
     columnas = [
         ("rank", "Pos.", MARGEN, 40, "right"),
         ("movimiento", "Mov.", MARGEN + 62, 110, "left"),
@@ -356,7 +372,7 @@ def pagina_1(b):
         ("recaudacion", "Recaudación", MARGEN + 690, 150, "right"),
         ("var", "Var.", MARGEN + 860, 92, "right"),
     ]
-    tabla_ranking(ax, b.ranking.head(10), 606, 60, columnas, tam=14, distribuidora_debajo=True)
+    tabla_ranking(ax, b.ranking.head(10), 578, 60, columnas, tam=14, distribuidora_debajo=True)
     pie(ax, 1)
     return fig
 
@@ -375,7 +391,7 @@ def pagina_2(b):
         ("var", "Var.", MARGEN + 840, 52, "right"),
         ("por_cine", "€/cine", MARGEN + 896, 56, "right"),
     ]
-    y = tabla_ranking(ax, b.ranking, 256, 38, columnas, tam=11.5)
+    y = tabla_ranking(ax, b.ranking, 228, 38, columnas, tam=11.5)
     texto(ax, MARGEN, y + 12, "Var.: recaudación frente al fin de semana anterior. "
           "Reentrada: vuelve al Top 25 sin ser estreno.", 10.5, GRIS_TEXTO)
     pie(ax, 2)
@@ -387,9 +403,9 @@ def pagina_3(b):
     cabecera(ax, b, "Trayectoria y movimientos")
 
     # Trayectoria en paneles pequeños, cada uno con su propia escala
-    texto(ax, MARGEN, 258, "Las cinco primeras con más de un fin de semana en cartel", 15,
+    texto(ax, MARGEN, 230, "Las cinco primeras con más de un fin de semana en cartel", 15,
           NEGRO, peso="semibold")
-    texto(ax, MARGEN, 282, "Recaudación por fin de semana. Cada panel tiene su propia escala "
+    texto(ax, MARGEN, 254, "Recaudación por fin de semana. Cada panel tiene su propia escala "
           "para que se vea cómo cae cada película.", 11.5, GRIS_TEXTO)
     findes = b.findes_trayectoria
     xs = list(range(len(findes)))
@@ -397,7 +413,7 @@ def pagina_3(b):
                    for f in findes["finde_inicio"]]
     hueco, cols = 24, 3
     w = (ANCHO - 2 * MARGEN - (cols - 1) * hueco) / cols
-    h_panel, y_inicio = 226, 316
+    h_panel, y_inicio = 226, 288
     for k, (rank, grupo) in enumerate(b.trayectoria.groupby("rank_actual")):
         fila, col = divmod(k, cols)
         x0 = MARGEN + col * (w + hueco)
@@ -419,7 +435,13 @@ def pagina_3(b):
                            textcoords="offset points", ha="center", fontsize=9.5, family=SANS,
                            color=NEGRO, zorder=5,
                            bbox={"boxstyle": "round,pad=0.12", "fc": "white", "ec": "none"})
-        g.set_ylim(0, tope * 1.25)
+        # Límite superior redondo, con su valor escrito sobre la línea discontinua.
+        limite = techo_redondo(tope * 1.3)
+        g.set_ylim(0, limite)
+        g.axhline(limite, color=ACERO, lw=0.9, ls=(0, (4, 3)), clip_on=False)
+        g.annotate(fmt_eje(limite), (0, 1), xycoords="axes fraction", xytext=(0, 4),
+                   textcoords="offset points", ha="left", va="bottom", fontsize=9,
+                   family=SANS, color=GRIS_TEXTO)
         g.set_xlim(-0.4, len(xs) - 0.6)
         g.set_xticks(xs, etiquetas_x, fontsize=9, family=SANS, color=GRIS_TEXTO)
         g.tick_params(axis="x", length=0, pad=4)
@@ -428,11 +450,11 @@ def pagina_3(b):
             g.spines[lado].set_visible(False)
         g.spines["bottom"].set_color(TAN)
     texto(ax, MARGEN + 2 * (w + hueco) + 8, y_inicio + h_panel + 18 + 20,
-          "Importes del fin de semana\n(viernes a domingo).\nSin punto: aún no se había\nestrenado o no estaba\nen el Top 25.",
+          "Importes del fin de semana\n(viernes a domingo).\nLínea discontinua: límite\nsuperior del eje del panel.\nSin punto: aún no se había\nestrenado o no estaba\nen el Top 25.",
           11, GRIS_TEXTO, linespacing=1.5)
 
     # Entradas y salidas
-    ytit = 806
+    ytit = 778
     texto(ax, MARGEN, ytit, "Entradas y salidas", 22, NEGRO, SERIF)
     col_w = (ANCHO - 2 * MARGEN - 40) / 2
     estrenos = b.ranking[b.ranking["movimiento"] == "Estreno"]

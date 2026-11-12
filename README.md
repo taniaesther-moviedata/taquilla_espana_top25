@@ -21,6 +21,7 @@ data/correcciones_titulos.csv  títulos para mostrar fijados a mano
 src/extraer_pdf.py             PDF -> histórico
 src/validar.py                 comprobaciones tras cada carga
 src/generar_boletin.py         páginas del boletín (PNG) y PDF para LinkedIn
+src/generar_animacion.py       versión animada del boletín (MP4 4:5 y GIF)
 dashboard/index.html           copia de la página del dashboard de Claude Data
 boletines/                     una carpeta por fin de semana: imagen + texto
 ```
@@ -31,8 +32,9 @@ boletines/                     una carpeta por fin de semana: imagen + texto
 2. `python src/extraer_pdf.py` añade al histórico los PDFs que falten.
 3. `python src/validar.py` debe terminar en «Validación correcta». Los errores se corrigen antes de seguir; los avisos se revisan y se anotan abajo si procede.
 4. `python src/generar_boletin.py` crea en `boletines/<viernes>/` las tres páginas (PNG 4:5) y el PDF para publicar como documento en LinkedIn.
-5. Actualizar el dashboard de Claude Data con el nuevo `top25_historico.csv`.
-6. Redactar el post y programarlo para el viernes a las 11:00.
+5. Opcional: `python src/generar_animacion.py --gif` crea la versión animada (MP4 de 12 s, 1080 × 1350, y una copia en GIF).
+6. Actualizar el dashboard de Claude Data con el nuevo `top25_historico.csv`.
+7. Redactar el post y programarlo para el viernes a las 11:00.
 
 Instalación: `pip install -r requirements.txt`
 
