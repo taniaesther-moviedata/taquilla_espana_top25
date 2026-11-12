@@ -105,14 +105,17 @@ def titulo_para_mostrar(titulo, correcciones=None):
     """
     if correcciones and titulo in correcciones:
         return correcciones[titulo]
-    principal, separador, subtitulo = titulo.partition(". ")
+    # Los paréntesis finales, como "(1980) (re)", se apartan y se devuelven al final.
+    m = re.match(r"^(.*?)((?:\s*\([^)]*\))*)$", titulo)
+    nucleo, parentesis = m.group(1), m.group(2)
+    principal, separador, subtitulo = nucleo.partition(". ")
     for art in ARTICULOS:
         sufijo = f", {art}"
         if principal.endswith(sufijo):
             resto = principal[: -len(sufijo)]
             if art in ("El", "La", "Los", "Las"):
                 resto = resto[:1].lower() + resto[1:]
-            return f"{art} {resto}{separador}{subtitulo}"
+            return f"{art} {resto}{separador}{subtitulo}{parentesis}"
     return titulo
 
 
