@@ -1,17 +1,15 @@
-"""Genera las imágenes del boletín para LinkedIn y las une en un PDF.
+"""Genera el boletín para LinkedIn como un PDF de tres páginas.
 
 Uso:
     python src/generar_boletin.py                 # último fin de semana del histórico
     python src/generar_boletin.py 2026-11-06      # un fin de semana concreto (viernes)
 
-Salida en boletines/<viernes>/:
-    pagina_1.png  cabecera, número 1, cifras clave y top 10
-    pagina_2.png  ranking completo
-    pagina_3.png  trayectoria y entradas y salidas
-    boletin_<viernes>.pdf  las tres páginas, para publicar como documento
+Salida: boletines/<viernes>/boletin_<viernes>.pdf, para publicar como documento.
+    Página 1: cabecera, número 1, cifras clave y top 10
+    Página 2: ranking completo
+    Página 3: trayectoria y entradas y salidas
 
-Las páginas son verticales 4:5 (1080 x 1350 puntos de diseño). Los PNG se
-guardan al doble de resolución para que el texto se vea nítido.
+Las páginas son verticales 4:5 (1080 x 1350 puntos de diseño) y vectoriales.
 Las métricas siguen las definiciones de las reglas del proyecto (sección 5).
 """
 
@@ -495,8 +493,7 @@ def main():
     ruta_pdf = salida / f"boletin_{b.finde_inicio}.pdf"
     with PdfPages(ruta_pdf, metadata={"Title": f"Top 25 del fin de semana · {periodo_largo(b.finde_inicio, b.finde_fin)}",
                                       "Author": "Tania Adrianzen Acero"}) as pdf:
-        for n, fig in enumerate(paginas, start=1):
-            fig.savefig(salida / f"pagina_{n}.png", dpi=200, facecolor=FONDO)
+        for fig in paginas:
             pdf.savefig(fig, facecolor=FONDO)
             plt.close(fig)
     print(f"Boletín generado en {salida.relative_to(RAIZ)}")
