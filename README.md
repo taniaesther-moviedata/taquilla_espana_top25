@@ -10,20 +10,32 @@ Autora: Tania Adrianzen Acero.
 
 Cita en el boletín: «Fuente: Ministerio de Cultura / ICAA, datos elaborados por Rentrak».
 
+**Dashboard interactivo:** [Taquilla España · Top 25 del fin de semana](https://claude.ai/artifact/UtmKbXVYMyQ1AhRdVoYDfK). Se actualiza cada semana y el selector permite consultar los fines de semana anteriores.
+
 ## Estructura
 
 ```
-data/raw/                      PDFs tal como se descargan; no se editan
-data/processed/
-  top25_historico.csv          una fila por película y fin de semana
-  totales_pdf.csv              fila TOTAL de cada PDF, para validar
-data/correcciones_titulos.csv  títulos para mostrar fijados a mano
-src/extraer_pdf.py             PDF -> histórico
-src/validar.py                 comprobaciones tras cada carga
-src/generar_boletin.py         páginas del boletín (PNG) y PDF para LinkedIn
-src/generar_animacion.py       versión animada del boletín (MP4 4:5 y GIF)
-dashboard/index.html           copia de la página del dashboard de Claude Data
-boletines/                     una carpeta por fin de semana: imagen + texto
+taquilla_espana_top25/
+├── data/
+│   ├── raw/                         # PDFs del ministerio tal como se descargan; no se editan
+│   ├── processed/
+│   │   ├── top25_historico.csv      # una fila por película y fin de semana
+│   │   └── totales_pdf.csv          # fila TOTAL de cada PDF, para validar
+│   └── correcciones_titulos.csv     # títulos para mostrar fijados a mano
+├── src/
+│   ├── extraer_pdf.py               # PDF -> histórico
+│   ├── validar.py                   # comprobaciones tras cada carga
+│   ├── generar_boletin.py           # páginas del boletín (PNG) y PDF para LinkedIn
+│   └── generar_animacion.py         # versión animada del boletín (MP4 4:5 y GIF)
+├── dashboard/
+│   └── index.html                   # copia de la página del dashboard de Claude Data
+├── boletines/
+│   └── AAAA-MM-DD/                  # una carpeta por fin de semana (fecha del viernes)
+│       ├── pagina_1.png … pagina_3.png
+│       ├── boletin_AAAA-MM-DD.pdf
+│       └── animacion_AAAA-MM-DD.mp4 / .gif
+├── requirements.txt
+└── README.md
 ```
 
 ## Rutina del jueves
