@@ -1,0 +1,594 @@
+<meta name="dash-one-writer">
+<style>
+  .tq { display: flex; flex-direction: column; gap: var(--cds-gap-xl); color: var(--color-fg); font-family: var(--font-anthropic-sans); }
+  .tq-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .tq-kicker { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); text-transform: uppercase; letter-spacing: .06em; }
+  .tq-title { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.15; }
+  .tq-period { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-body); }
+  .tq-lede { margin: 0; max-width: 62ch; font-size: var(--cds-font-size-body); line-height: 1.5; }
+  .tq-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--cds-gap-md); }
+  .tq-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+  .tq-card-label { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .tq-big { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tq-sub { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .tq-up { color: var(--color-ok); }
+  .tq-down { color: var(--color-bad); }
+  .tq-section { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .tq-h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+  .tq-note { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .tq-chart { position: relative; min-height: 240px; }
+  .tq-chart svg { display: block; overflow: visible; }
+  .tq-chart text { font-family: var(--font-anthropic-sans); }
+  .tq-axis text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+  .tq-axis line, .tq-axis path { stroke: var(--cds-chart-axis); }
+  .tq-grid line { stroke: var(--cds-chart-grid); }
+  .tq-grid path { display: none; }
+  .tq-barlabel { fill: var(--color-fg); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .tq-tip { position: absolute; pointer-events: none; z-index: 2; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; }
+  .tq-tip-muted { color: var(--cds-text-secondary); }
+  .tq-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); margin: 0; padding: 0; list-style: none; font-size: var(--cds-font-size-caption); }
+  .tq-legend li { display: flex; align-items: center; gap: 6px; }
+  .tq-swatch { display: inline-block; width: 12px; height: 3px; border-radius: 2px; }
+  .tq-dash { display: inline-block; width: 18px; border-top: 2px dashed var(--cds-chart-reference); vertical-align: middle; margin-right: 6px; }
+  .tq-tablewrap { overflow-x: auto; }
+  .tq-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+  .tq-table th { text-align: left; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .tq-table td { padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+  .tq-table .tq-num { text-align: right; white-space: nowrap; }
+  .tq-table .tq-title-cell { min-width: 180px; }
+  .tq-table .tq-dist { color: var(--color-fg-muted); white-space: nowrap; }
+  .tq-mov { white-space: nowrap; font-size: var(--cds-font-size-caption); }
+  .tq-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-fg); }
+  .tq-moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--cds-gap-lg); }
+  .tq-list { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; font-size: var(--cds-font-size-body); }
+  .tq-list .tq-dist { color: var(--color-fg-muted); }
+  .tq-foot { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+  [data-dash-source-state=refreshing] { opacity: .5; }
+</style>
+
+<div class="tq">
+  <header class="tq-head" id="cabecera">
+    <p class="tq-kicker">Boletín semanal · Taquilla en España</p>
+    <h1 class="tq-title">Top 25 del fin de semana</h1>
+    <p class="tq-period">Fin de semana del <span data-draw="periodo" data-source="resumen" data-field="finde_inicio" data-row="0">—</span></p>
+    <p class="tq-lede" id="resumen-frase">Las 25 películas más taquilleras recaudaron <b data-draw="frase-rec" data-source="resumen" data-field="recaudacion_eur" data-row="0">—</b>, <b data-draw="frase-var" data-source="resumen" data-field="var_recaudacion_semana" data-row="0">—</b> frente al fin de semana anterior y <b data-draw="frase-var4" data-source="resumen" data-field="var_recaudacion_4_findes" data-row="0">—</b> frente a la media de los cuatro anteriores. <span data-draw="frase-lider" data-source="resumen" data-field="lider" data-row="0">—</span> lidera con el <b data-draw="frase-cuota" data-source="resumen" data-field="cuota_lider" data-row="0">—</b> de lo recaudado por el Top 25.</p>
+  </header>
+
+  <section class="tq-cards" id="cifras-clave" aria-label="Cifras clave">
+    <div class="tq-card" id="tarjeta-recaudacion">
+      <p class="tq-card-label">Recaudación del Top 25</p>
+      <p class="tq-big" data-draw="kpi-rec" data-source="resumen" data-field="recaudacion_eur" data-row="0">—</p>
+      <p class="tq-sub"><span data-draw="kpi-rec-var" data-source="resumen" data-field="var_recaudacion_semana" data-row="0">—</span> frente al fin de semana anterior</p>
+    </div>
+    <div class="tq-card" id="tarjeta-espectadores">
+      <p class="tq-card-label">Espectadores del Top 25</p>
+      <p class="tq-big" data-draw="kpi-esp" data-source="resumen" data-field="espectadores" data-row="0">—</p>
+      <p class="tq-sub"><span data-draw="kpi-esp-var" data-source="resumen" data-field="var_espectadores_semana" data-row="0">—</span> frente al fin de semana anterior</p>
+    </div>
+    <div class="tq-card" id="tarjeta-media">
+      <p class="tq-card-label">Recaudación frente a la media de 4 fines de semana</p>
+      <p class="tq-big" data-draw="kpi-var4" data-source="resumen" data-field="var_recaudacion_4_findes" data-row="0">—</p>
+      <p class="tq-sub">Media de los cuatro anteriores: <span data-draw="kpi-media" data-source="resumen" data-field="media_recaudacion_4_findes" data-row="0">—</span></p>
+    </div>
+    <div class="tq-card" id="tarjeta-estrenos">
+      <p class="tq-card-label">Estrenos en el Top 25</p>
+      <p class="tq-big" data-draw="kpi-estrenos" data-source="resumen" data-field="estrenos" data-row="0">—</p>
+      <p class="tq-sub">Películas en su primer fin de semana</p>
+    </div>
+  </section>
+
+  <section class="tq-section" id="evolucion">
+    <h2 class="tq-h2">Recaudación del Top 25 en los últimos cinco fines de semana</h2>
+    <div class="tq-chart" data-draw="grafico-evolucion" data-source="finde_totales resumen" role="img" aria-label="Recaudación del Top 25 por fin de semana">—</div>
+    <p class="tq-note"><span class="tq-dash"></span>Media de los cuatro fines de semana anteriores al actual</p>
+  </section>
+
+  <section class="tq-section" id="ranking">
+    <h2 class="tq-h2">Ranking del fin de semana</h2>
+    <p class="tq-note">Variación de recaudación frente al fin de semana anterior. «Reentrada»: vuelve al Top 25 sin ser estreno.</p>
+    <div class="tq-tablewrap">
+      <table class="tq-table" data-source="ranking" data-row-key="rank">
+        <thead>
+          <tr>
+            <th data-field="rank" class="tq-num">Pos.</th>
+            <th data-field="movimiento">Mov.</th>
+            <th data-field="titulo_mostrar">Película</th>
+            <th data-field="distribuidora">Distribuidora</th>
+            <th data-field="semana_en_cartel" class="tq-num">Sem.</th>
+            <th data-field="cines" class="tq-num">Cines</th>
+            <th data-field="recaudacion_eur" class="tq-num">Recaudación</th>
+            <th data-field="var_recaudacion_semana" class="tq-num">Var.</th>
+            <th data-field="media_por_cine" class="tq-num">€ por cine</th>
+          </tr>
+        </thead>
+        <tbody data-draw="tabla-ranking"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tq-section" id="trayectoria">
+    <h2 class="tq-h2">Trayectoria de las cinco primeras</h2>
+    <p class="tq-note">Recaudación de cada fin de semana. Un hueco indica que la película no estaba en el Top 25 o aún no se había estrenado.</p>
+    <div class="tq-chart" data-draw="grafico-trayectoria" data-source="trayectoria finde_totales" role="img" aria-label="Recaudación por fin de semana de las cinco películas que encabezan el ranking">—</div>
+    <ul class="tq-legend" data-draw="leyenda-trayectoria" data-source="trayectoria"></ul>
+  </section>
+
+  <section class="tq-section" id="movimientos">
+    <h2 class="tq-h2">Entradas y salidas</h2>
+    <div class="tq-moves">
+      <div id="estrenos">
+        <p class="tq-card-label">Estrenos</p>
+        <ul class="tq-list" data-draw="lista-estrenos" data-source="ranking"></ul>
+      </div>
+      <div id="reentradas">
+        <p class="tq-card-label">Reentradas</p>
+        <ul class="tq-list" data-draw="lista-reentradas" data-source="ranking"></ul>
+      </div>
+      <div id="salidas">
+        <p class="tq-card-label">Salen del Top 25</p>
+        <ul class="tq-list" data-draw="lista-salidas" data-source="salidas"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="tq-foot" id="pie">
+    <p class="tq-note">Fuente: Ministerio de Cultura / ICAA, datos elaborados por Rentrak (no son datos oficiales del ICAA). «Top 25» es la suma de las 25 películas del informe, no la taquilla total. Las variaciones se calculan con el histórico propio.</p>
+    <p class="tq-note">Análisis: Tania Adrianzen Acero</p>
+  </footer>
+</div>
+
+<script>
+  // ---------- Cálculos ----------
+  dash.calc('finde_totales', {
+    inputs: ['historico'],
+    title: 'Top 25 por fin de semana',
+    description: 'Suma de la recaudación y los espectadores de las 25 películas de cada fin de semana.',
+    fn: (historico) => d3.rollups(
+      historico,
+      (filas) => ({
+        finde_fin: filas[0].finde_fin,
+        recaudacion_eur: d3.sum(filas, (f) => Number(f.recaudacion_eur)),
+        espectadores: d3.sum(filas, (f) => Number(f.espectadores)),
+        peliculas: filas.length,
+      }),
+      (f) => f.finde_inicio,
+    )
+      .map(([finde_inicio, valores]) => ({finde_inicio, ...valores}))
+      .sort((a, b) => d3.ascending(a.finde_inicio, b.finde_inicio)),
+  });
+
+  dash.calc('resumen', {
+    inputs: ['finde_totales', 'historico'],
+    title: 'Resumen del último fin de semana',
+    description: 'Totales del último fin de semana, variación frente al anterior y frente a la media de los cuatro anteriores.',
+    fn: (finde_totales, historico) => {
+      const n = finde_totales.length;
+      if (n < 2) return [];
+      const actual = finde_totales[n - 1];
+      const anterior = finde_totales[n - 2];
+      const cuatroAnteriores = finde_totales.slice(Math.max(0, n - 5), n - 1);
+      const mediaRecaudacion = d3.mean(cuatroAnteriores, (f) => f.recaudacion_eur);
+      const filas = historico.filter((f) => f.finde_inicio === actual.finde_inicio);
+      const primera = filas.find((f) => Number(f.rank) === 1);
+      return [{
+        finde_inicio: actual.finde_inicio,
+        finde_fin: actual.finde_fin,
+        recaudacion_eur: actual.recaudacion_eur,
+        espectadores: actual.espectadores,
+        var_recaudacion_semana: actual.recaudacion_eur / anterior.recaudacion_eur - 1,
+        var_espectadores_semana: actual.espectadores / anterior.espectadores - 1,
+        media_recaudacion_4_findes: mediaRecaudacion,
+        var_recaudacion_4_findes: actual.recaudacion_eur / mediaRecaudacion - 1,
+        findes_en_media: cuatroAnteriores.length,
+        estrenos: filas.filter((f) => Number(f.semana_en_cartel) === 1).length,
+        lider: primera ? primera.titulo_mostrar : null,
+        cuota_lider: primera ? Number(primera.recaudacion_eur) / actual.recaudacion_eur : null,
+      }];
+    },
+  });
+
+  dash.calc('ranking', {
+    inputs: ['historico'],
+    title: 'Ranking del último fin de semana',
+    description: 'Las 25 películas del último fin de semana con su posición anterior y su variación de recaudación.',
+    fn: (historico) => {
+      const findes = [...new Set(historico.map((f) => f.finde_inicio))].sort();
+      const actual = findes[findes.length - 1];
+      const anterior = findes[findes.length - 2];
+      const clave = (f) => `${f.titulo_original}|${f.distribuidora}`;
+      const previas = new Map(historico.filter((f) => f.finde_inicio === anterior).map((f) => [clave(f), f]));
+      return historico
+        .filter((f) => f.finde_inicio === actual)
+        .map((f) => {
+          const ant = previas.get(clave(f));
+          const rank = Number(f.rank);
+          const semana = Number(f.semana_en_cartel);
+          const recaudacion = Number(f.recaudacion_eur);
+          const cines = Number(f.cines);
+          const cambio = ant ? Number(ant.rank) - rank : null;
+          let movimiento;
+          if (ant) movimiento = cambio > 0 ? `▲ ${cambio}` : cambio < 0 ? `▼ ${-cambio}` : '=';
+          else movimiento = semana === 1 ? 'Estreno' : 'Reentrada';
+          return {
+            rank,
+            movimiento,
+            titulo_mostrar: f.titulo_mostrar,
+            distribuidora: f.distribuidora,
+            semana_en_cartel: semana,
+            cines,
+            recaudacion_eur: recaudacion,
+            espectadores: Number(f.espectadores),
+            rank_anterior: ant ? Number(ant.rank) : null,
+            cambio_posicion: cambio,
+            var_recaudacion_semana: ant ? recaudacion / Number(ant.recaudacion_eur) - 1 : null,
+            media_por_cine: Math.round(recaudacion / cines),
+          };
+        })
+        .sort((a, b) => a.rank - b.rank);
+    },
+  });
+
+  dash.calc('salidas', {
+    inputs: ['historico'],
+    title: 'Películas que salen del Top 25',
+    description: 'Películas del fin de semana anterior que no están en el último.',
+    fn: (historico) => {
+      const findes = [...new Set(historico.map((f) => f.finde_inicio))].sort();
+      const actual = findes[findes.length - 1];
+      const anterior = findes[findes.length - 2];
+      const clave = (f) => `${f.titulo_original}|${f.distribuidora}`;
+      const siguen = new Set(historico.filter((f) => f.finde_inicio === actual).map(clave));
+      return historico
+        .filter((f) => f.finde_inicio === anterior && !siguen.has(clave(f)))
+        .map((f) => ({
+          rank_anterior: Number(f.rank),
+          titulo_mostrar: f.titulo_mostrar,
+          semanas_en_cartel: Number(f.semana_en_cartel),
+          recaudacion_ultimo_finde: Number(f.recaudacion_eur),
+        }))
+        .sort((a, b) => a.rank_anterior - b.rank_anterior);
+    },
+  });
+
+  dash.calc('trayectoria', {
+    inputs: ['historico'],
+    title: 'Trayectoria de las cinco primeras',
+    description: 'Recaudación en los últimos cinco fines de semana de las películas que ocupan las posiciones 1 a 5.',
+    fn: (historico) => {
+      const findes = [...new Set(historico.map((f) => f.finde_inicio))].sort();
+      const ultimos = new Set(findes.slice(-5));
+      const actual = findes[findes.length - 1];
+      const clave = (f) => `${f.titulo_original}|${f.distribuidora}`;
+      const primeras = new Map(
+        historico
+          .filter((f) => f.finde_inicio === actual && Number(f.rank) <= 5)
+          .map((f) => [clave(f), {titulo: f.titulo_mostrar, rank: Number(f.rank)}]),
+      );
+      return historico
+        .filter((f) => ultimos.has(f.finde_inicio) && primeras.has(clave(f)))
+        .map((f) => ({
+          titulo_mostrar: primeras.get(clave(f)).titulo,
+          rank_actual: primeras.get(clave(f)).rank,
+          finde_inicio: f.finde_inicio,
+          recaudacion_eur: Number(f.recaudacion_eur),
+        }))
+        .sort((a, b) => a.rank_actual - b.rank_actual || d3.ascending(a.finde_inicio, b.finde_inicio));
+    },
+  });
+
+  // ---------- Formatos ----------
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const MESES_CORTOS = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sept.', 'oct.', 'nov.', 'dic.'];
+  const leerFecha = d3.utcParse('%Y-%m-%d');
+  const es = d3.formatLocale({decimal: ',', thousands: '.', grouping: [3], currency: ['', ' €']});
+  const fmtEntero = es.format(',.0f');
+  const fmtEuros = (v) => `${fmtEntero(v)} €`;
+  const fmtMillones = (v) => (Math.abs(v) >= 1e6
+    ? `${es.format(',.1f')(v / 1e6)} M€`
+    : `${fmtEntero(Math.round(v / 1e3))} mil €`);
+  const fmtEje = (v) => (v === 0 ? '0' : Math.abs(v) >= 1e6 ? `${es.format(',~r')(+(v / 1e6).toFixed(1))} M€` : `${fmtEntero(v / 1e3)} mil €`);
+  const fmtPct = (v) => {
+    if (v === null || v === undefined || Number.isNaN(v)) return '';
+    const p = Math.round(v * 100);
+    return `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p)} %`;
+  };
+  const fmtCuota = (v) => `${Math.round(v * 100)} %`;
+  const claseSigno = (v) => (v > 0.005 ? 'tq-up' : v < -0.005 ? 'tq-down' : '');
+  function etiquetaFinde(ini, fin) {
+    const a = leerFecha(ini);
+    const b = leerFecha(fin);
+    if (!a || !b) return ini;
+    return a.getUTCMonth() === b.getUTCMonth()
+      ? `${a.getUTCDate()}-${b.getUTCDate()} ${MESES_CORTOS[b.getUTCMonth()]}`
+      : `${a.getUTCDate()} ${MESES_CORTOS[a.getUTCMonth()]}-${b.getUTCDate()} ${MESES_CORTOS[b.getUTCMonth()]}`;
+  }
+  function periodoLargo(ini, fin) {
+    const a = leerFecha(ini);
+    const b = leerFecha(fin);
+    if (!a || !b) return ini;
+    const mesA = MESES[a.getUTCMonth()];
+    const mesB = MESES[b.getUTCMonth()];
+    return mesA === mesB
+      ? `${a.getUTCDate()} al ${b.getUTCDate()} de ${mesB} de ${b.getUTCFullYear()}`
+      : `${a.getUTCDate()} de ${mesA} al ${b.getUTCDate()} de ${mesB} de ${b.getUTCFullYear()}`;
+  }
+
+  // Devuelve la fila del resumen o null si aún no hay datos.
+  function filaResumen() {
+    const r = dash.data('resumen');
+    return r.status === 'ok' && Array.isArray(r.data) && r.data.length ? r.data[0] : null;
+  }
+  function texto(nombre, formato, campo, conSigno) {
+    dash.draw(nombre, (el) => {
+      const fila = filaResumen();
+      el.classList.remove('tq-up', 'tq-down');
+      if (!fila || fila[campo] === null || fila[campo] === undefined) { el.textContent = '—'; return; }
+      el.textContent = formato(fila[campo]);
+      if (conSigno) { const c = claseSigno(fila[campo]); if (c) el.classList.add(c); }
+    });
+  }
+
+  // ---------- Cabecera y cifras ----------
+  dash.draw('periodo', (el) => {
+    const fila = filaResumen();
+    el.textContent = fila ? periodoLargo(fila.finde_inicio, fila.finde_fin) : '—';
+  });
+  texto('frase-rec', fmtMillones, 'recaudacion_eur');
+  texto('frase-var', fmtPct, 'var_recaudacion_semana');
+  texto('frase-var4', fmtPct, 'var_recaudacion_4_findes');
+  texto('frase-lider', (v) => v, 'lider');
+  texto('frase-cuota', fmtCuota, 'cuota_lider');
+  texto('kpi-rec', fmtMillones, 'recaudacion_eur');
+  texto('kpi-rec-var', fmtPct, 'var_recaudacion_semana', true);
+  texto('kpi-esp', fmtEntero, 'espectadores');
+  texto('kpi-esp-var', fmtPct, 'var_espectadores_semana', true);
+  texto('kpi-var4', fmtPct, 'var_recaudacion_4_findes', true);
+  texto('kpi-media', fmtMillones, 'media_recaudacion_4_findes');
+  texto('kpi-estrenos', fmtEntero, 'estrenos');
+
+  // ---------- Ayudas para gráficos ----------
+  function prepararTooltip(el) {
+    const tip = document.createElement('div');
+    tip.className = 'tq-tip';
+    tip.hidden = true;
+    el.appendChild(tip);
+    return {
+      mostrar(evento, lineas) {
+        tip.replaceChildren(...lineas.map(([t, muted]) => {
+          const d = document.createElement('div');
+          d.textContent = t;
+          if (muted) d.className = 'tq-tip-muted';
+          return d;
+        }));
+        tip.hidden = false;
+        const caja = el.getBoundingClientRect();
+        const x = evento.clientX - caja.left;
+        const y = evento.clientY - caja.top;
+        const ancho = tip.offsetWidth;
+        tip.style.left = `${Math.max(0, Math.min(x + 12, caja.width - ancho))}px`;
+        tip.style.top = `${Math.max(0, y - tip.offsetHeight - 10)}px`;
+      },
+      ocultar() { tip.hidden = true; },
+    };
+  }
+  function estadoNoListo(el, ...ids) {
+    const estados = ids.map((id) => dash.data(id).status);
+    if (estados.every((s) => s === 'ok')) return false;
+    el.replaceChildren();
+    el.textContent = estados.includes('error') ? 'No se pudo cargar' : '—';
+    return true;
+  }
+
+  // ---------- Gráfico de evolución ----------
+  dash.draw('grafico-evolucion', (el) => {
+    if (estadoNoListo(el, 'finde_totales', 'resumen')) return;
+    const todos = dash.data('finde_totales').data || [];
+    const fila = filaResumen();
+    const datos = todos.slice(-5);
+    if (!datos.length || !fila) { el.textContent = '—'; return; }
+    el.replaceChildren();
+    const ancho = Math.max(280, el.clientWidth || 600);
+    const alto = 240;
+    const m = {top: 24, right: 8, bottom: 28, left: 8};
+    const x = d3.scaleBand().domain(datos.map((d) => d.finde_inicio)).range([m.left, ancho - m.right]).padding(0.28);
+    const maximo = d3.max([...datos.map((d) => d.recaudacion_eur), fila.media_recaudacion_4_findes]);
+    const y = d3.scaleLinear().domain([0, maximo * 1.08]).range([alto - m.bottom, m.top]);
+    const svg = d3.select(el).append('svg')
+      .attr('width', '100%').attr('height', alto).attr('viewBox', `0 0 ${ancho} ${alto}`)
+      .attr('role', 'img').attr('aria-label', 'Recaudación del Top 25 en los últimos cinco fines de semana, con la media de los cuatro anteriores');
+    const tooltip = prepararTooltip(el);
+    const actual = datos[datos.length - 1].finde_inicio;
+
+    svg.append('g').selectAll('rect').data(datos).join('rect')
+      .attr('x', (d) => x(d.finde_inicio)).attr('width', x.bandwidth())
+      .attr('y', (d) => y(d.recaudacion_eur)).attr('height', (d) => y(0) - y(d.recaudacion_eur))
+      .attr('rx', 3)
+      .style('fill', (d) => (d.finde_inicio === actual ? dash.colors[0] : 'var(--cds-chart-muted)'))
+      .on('pointermove', (e, d) => tooltip.mostrar(e, [
+        [etiquetaFinde(d.finde_inicio, d.finde_fin), true],
+        [fmtEuros(d.recaudacion_eur)],
+        [`${fmtEntero(d.espectadores)} espectadores`, true],
+      ]))
+      .on('pointerleave', () => tooltip.ocultar());
+
+    svg.append('g').selectAll('text').data(datos).join('text')
+      .attr('class', 'tq-barlabel')
+      .attr('x', (d) => x(d.finde_inicio) + x.bandwidth() / 2)
+      .attr('y', (d) => y(d.recaudacion_eur) - 6)
+      .attr('text-anchor', 'middle')
+      .text((d) => fmtMillones(d.recaudacion_eur));
+
+    // Media de los cuatro fines de semana anteriores, sobre los cuatro primeros.
+    const previos = datos.slice(0, -1);
+    if (previos.length) {
+      svg.append('line')
+        .attr('x1', x(previos[0].finde_inicio) - 4)
+        .attr('x2', x(actual) + x.bandwidth() + 4)
+        .attr('y1', y(fila.media_recaudacion_4_findes)).attr('y2', y(fila.media_recaudacion_4_findes))
+        .style('stroke', 'var(--cds-chart-reference)').style('stroke-width', 2).style('stroke-dasharray', '5 4');
+    }
+
+    const eje = svg.append('g').attr('class', 'tq-axis').attr('transform', `translate(0,${alto - m.bottom})`)
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickFormat((v) => {
+        const d = datos.find((f) => f.finde_inicio === v);
+        return d ? etiquetaFinde(d.finde_inicio, d.finde_fin) : v;
+      }));
+    eje.select('.domain').style('stroke', 'var(--cds-chart-axis)');
+    // Si las etiquetas no caben, se dejan solo las fechas de inicio.
+    const etiquetas = eje.selectAll('text').nodes();
+    const masAncha = d3.max(etiquetas, (n) => n.getComputedTextLength()) || 0;
+    if (masAncha > x.step() - 4) eje.selectAll('text').text((v) => { const f = leerFecha(v); return f ? `${f.getUTCDate()}/${f.getUTCMonth() + 1}` : v; });
+  });
+
+  // ---------- Tabla ----------
+  dash.draw('tabla-ranking', (tbody) => {
+    const r = dash.data('ranking');
+    tbody.replaceChildren();
+    if (r.status !== 'ok' || !Array.isArray(r.data)) return;
+    for (const f of r.data) {
+      const tr = document.createElement('tr');
+      tr.dataset.key = String(f.rank);
+      const celda = (valor, clase) => {
+        const td = document.createElement('td');
+        if (clase) td.className = clase;
+        if (valor instanceof Node) td.appendChild(valor); else td.textContent = valor;
+        tr.appendChild(td);
+        return td;
+      };
+      celda(String(f.rank), 'tq-num');
+      const mov = document.createElement('span');
+      mov.textContent = f.movimiento;
+      if (f.movimiento === 'Estreno' || f.movimiento === 'Reentrada') mov.className = 'tq-badge';
+      else if (f.cambio_posicion > 0) mov.className = 'tq-up';
+      else if (f.cambio_posicion < 0) mov.className = 'tq-down';
+      celda(mov, 'tq-mov');
+      celda(f.titulo_mostrar, 'tq-title-cell');
+      celda(f.distribuidora, 'tq-dist');
+      celda(String(f.semana_en_cartel), 'tq-num');
+      celda(fmtEntero(f.cines), 'tq-num');
+      celda(fmtEuros(f.recaudacion_eur), 'tq-num');
+      const v = celda(fmtPct(f.var_recaudacion_semana), 'tq-num');
+      const c = claseSigno(f.var_recaudacion_semana);
+      if (c) v.classList.add(c);
+      celda(fmtEuros(f.media_por_cine), 'tq-num');
+      tbody.appendChild(tr);
+    }
+  });
+
+  // ---------- Trayectoria ----------
+  dash.draw('grafico-trayectoria', (el) => {
+    if (estadoNoListo(el, 'trayectoria', 'finde_totales')) return;
+    const filas = dash.data('trayectoria').data || [];
+    const findes = (dash.data('finde_totales').data || []).slice(-5);
+    if (!filas.length || !findes.length) { el.textContent = '—'; return; }
+    el.replaceChildren();
+    const ancho = Math.max(280, el.clientWidth || 600);
+    const alto = 260;
+    const series = d3.groups(filas, (f) => f.rank_actual).sort((a, b) => a[0] - b[0])
+      .map(([rank, fs]) => ({rank, titulo: fs[0].titulo_mostrar, valores: new Map(fs.map((f) => [f.finde_inicio, f.recaudacion_eur]))}));
+    const maximo = d3.max(filas, (f) => f.recaudacion_eur);
+    const y = d3.scaleLinear().domain([0, maximo]).nice(4).range([alto - 28, 12]);
+
+    const svg = d3.select(el).append('svg')
+      .attr('width', '100%').attr('height', alto).attr('viewBox', `0 0 ${ancho} ${alto}`)
+      .attr('role', 'img').attr('aria-label', 'Recaudación por fin de semana de las cinco películas que encabezan el ranking');
+    const tooltip = prepararTooltip(el);
+
+    // Se mide la etiqueta más ancha del eje para fijar el margen izquierdo.
+    const ejeY = svg.append('g').attr('class', 'tq-axis tq-grid');
+    ejeY.call(d3.axisLeft(y).ticks(4).tickFormat(fmtEje).tickSize(0));
+    const izquierda = (d3.max(ejeY.selectAll('text').nodes(), (n) => n.getComputedTextLength()) || 40) + 10;
+    const m = {left: izquierda, right: 16};
+    const x = d3.scalePoint().domain(findes.map((f) => f.finde_inicio)).range([m.left + 8, ancho - m.right]);
+    ejeY.attr('transform', `translate(${m.left},0)`)
+      .call(d3.axisLeft(y).ticks(4).tickFormat(fmtEje).tickSize(-(ancho - m.left - m.right)).tickPadding(6));
+    ejeY.select('.domain').remove();
+    ejeY.selectAll('line').style('stroke', 'var(--cds-chart-grid)');
+
+    const ejeX = svg.append('g').attr('class', 'tq-axis').attr('transform', `translate(0,${alto - 28})`)
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickFormat((v) => {
+        const d = findes.find((f) => f.finde_inicio === v);
+        return d ? etiquetaFinde(d.finde_inicio, d.finde_fin) : v;
+      }));
+    ejeX.select('.domain').remove();
+    const paso = findes.length > 1 ? x(findes[1].finde_inicio) - x(findes[0].finde_inicio) : ancho;
+    const masAncha = d3.max(ejeX.selectAll('text').nodes(), (n) => n.getComputedTextLength()) || 0;
+    if (masAncha > paso - 4) ejeX.selectAll('text').text((v) => { const f = leerFecha(v); return f ? `${f.getUTCDate()}/${f.getUTCMonth() + 1}` : v; });
+
+    const linea = d3.line()
+      .defined((d) => d.valor !== undefined)
+      .x((d) => x(d.finde))
+      .y((d) => y(d.valor));
+    series.forEach((s, i) => {
+      const color = dash.colors[i % dash.colors.length];
+      const puntos = findes.map((f) => ({finde: f.finde_inicio, finde_fin: f.finde_fin, valor: s.valores.get(f.finde_inicio)}));
+      svg.append('path').datum(puntos).attr('d', linea)
+        .style('fill', 'none').style('stroke', color).style('stroke-width', 2.25);
+      svg.append('g').selectAll('circle').data(puntos.filter((p) => p.valor !== undefined)).join('circle')
+        .attr('cx', (p) => x(p.finde)).attr('cy', (p) => y(p.valor)).attr('r', 4)
+        .style('fill', color).style('stroke', 'var(--color-bg)').style('stroke-width', 1.5)
+        .on('pointermove', (e, p) => tooltip.mostrar(e, [
+          [s.titulo],
+          [`${etiquetaFinde(p.finde, p.finde_fin)}: ${fmtEuros(p.valor)}`, true],
+        ]))
+        .on('pointerleave', () => tooltip.ocultar());
+    });
+  });
+
+  dash.draw('leyenda-trayectoria', (ul) => {
+    const t = dash.data('trayectoria');
+    ul.replaceChildren();
+    if (t.status !== 'ok' || !Array.isArray(t.data)) return;
+    const series = d3.groups(t.data, (f) => f.rank_actual).sort((a, b) => a[0] - b[0]);
+    series.forEach(([rank, fs], i) => {
+      const li = document.createElement('li');
+      const muestra = document.createElement('span');
+      muestra.className = 'tq-swatch';
+      muestra.style.background = dash.colors[i % dash.colors.length];
+      const nombre = document.createElement('span');
+      nombre.textContent = `${rank}. ${fs[0].titulo_mostrar}`;
+      li.append(muestra, nombre);
+      ul.appendChild(li);
+    });
+  });
+
+  // ---------- Entradas y salidas ----------
+  function listaRanking(nombre, movimiento, vacio) {
+    dash.draw(nombre, (ul) => {
+      const r = dash.data('ranking');
+      ul.replaceChildren();
+      if (r.status !== 'ok' || !Array.isArray(r.data)) return;
+      const filas = r.data.filter((f) => f.movimiento === movimiento);
+      if (!filas.length) { const li = document.createElement('li'); li.textContent = vacio; li.className = 'tq-dist'; ul.appendChild(li); return; }
+      for (const f of filas) {
+        const li = document.createElement('li');
+        const titulo = document.createElement('span');
+        titulo.textContent = `${f.rank}. ${f.titulo_mostrar} `;
+        const detalle = document.createElement('span');
+        detalle.className = 'tq-dist';
+        detalle.textContent = `· ${fmtMillones(f.recaudacion_eur)} · ${f.distribuidora}`;
+        li.append(titulo, detalle);
+        ul.appendChild(li);
+      }
+    });
+  }
+  listaRanking('lista-estrenos', 'Estreno', 'Ninguno este fin de semana');
+  listaRanking('lista-reentradas', 'Reentrada', 'Ninguna este fin de semana');
+
+  dash.draw('lista-salidas', (ul) => {
+    const s = dash.data('salidas');
+    ul.replaceChildren();
+    if (s.status !== 'ok' || !Array.isArray(s.data)) return;
+    if (!s.data.length) { const li = document.createElement('li'); li.textContent = 'Ninguna este fin de semana'; li.className = 'tq-dist'; ul.appendChild(li); return; }
+    for (const f of s.data) {
+      const li = document.createElement('li');
+      const titulo = document.createElement('span');
+      titulo.textContent = `${f.titulo_mostrar} `;
+      const detalle = document.createElement('span');
+      detalle.className = 'tq-dist';
+      detalle.textContent = `· era la ${f.rank_anterior}.ª · ${fmtMillones(f.recaudacion_ultimo_finde)} el fin de semana anterior`;
+      li.append(titulo, detalle);
+      ul.appendChild(li);
+    }
+  });
+</script>
