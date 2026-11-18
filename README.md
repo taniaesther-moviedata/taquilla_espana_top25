@@ -70,3 +70,9 @@ Tan `#D2B997`, Lavender Purple `#946FBA`, Cool Steel `#9EA6A5`, Rose Wine `#BF4D
 | Fin de semana | Fecha de carga | Incidencias |
 | --- | --- | --- |
 | 2 oct. – 8 nov. 2026 (6 fines de semana) | 2026-11-12 | Carga inicial. Validación correcta; avisos de origen anotados arriba. |
+
+## Cambios en la estructura del dashboard
+
+| Fecha | Cambio |
+| --- | --- |
+| 2026-11-18 | Nueva tarjeta «Distribuidora líder del fin de semana» (distribuidora con más recaudación en el Top 25, su cuota, su recaudación y su número de películas) y nueva sección con la cuota de cada distribuidora en barras horizontales. Ambas siguen el selector de fin de semana, no el de distribuidora. |
