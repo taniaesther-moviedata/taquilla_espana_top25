@@ -52,6 +52,8 @@
   .tq-reset:disabled { opacity: .45; cursor: default; }
   .tq-sel { margin: 0; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); font-size: var(--cds-font-size-body); line-height: 1.5; }
   .tq-bar { cursor: pointer; }
+  .tq-big-texto { font-size: 1.45rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .tq-chart-dist { min-height: 160px; }
 </style>
 
 <div class="tq">
@@ -94,12 +96,23 @@
       <p class="tq-big" data-draw="kpi-estrenos">—</p>
       <p class="tq-sub">Películas en su primer fin de semana</p>
     </div>
+    <div class="tq-card" id="tarjeta-distribuidora">
+      <p class="tq-card-label">Distribuidora líder del fin de semana</p>
+      <p class="tq-big tq-big-texto" data-draw="kpi-dist">—</p>
+      <p class="tq-sub"><b data-draw="kpi-dist-cuota">—</b> de la recaudación del Top 25 · <span data-draw="kpi-dist-rec">—</span> con <span data-draw="kpi-dist-n">—</span></p>
+    </div>
   </section>
 
   <section class="tq-section" id="evolucion">
     <h2 class="tq-h2">Recaudación del Top 25: el fin de semana elegido y los cuatro anteriores</h2>
     <div class="tq-chart" data-draw="grafico-evolucion" data-source="findes" role="img" aria-label="Recaudación del Top 25 por fin de semana">—</div>
     <p class="tq-note"><span class="tq-dash"></span>Media de los fines de semana anteriores al elegido (hasta cuatro). Pulsa una barra para ver ese fin de semana.</p>
+  </section>
+
+  <section class="tq-section" id="cuota-distribuidoras">
+    <h2 class="tq-h2">Cuota de cada distribuidora en la recaudación del Top 25</h2>
+    <p class="tq-note">Suma de lo que recaudaron sus películas del Top 25 en el fin de semana elegido. Pulsa una barra para filtrar por esa distribuidora.</p>
+    <div class="tq-chart tq-chart-dist" data-draw="grafico-distribuidoras" data-source="distribuidoras" role="img" aria-label="Cuota de cada distribuidora en la recaudación del Top 25">—</div>
   </section>
 
   <section class="tq-section" id="ranking">
@@ -413,6 +426,35 @@
   dePelicula('sp-rec', 'recaudacion_eur', fmtEuros);
   dePelicula('sp-cuota', 'cuota_top25', fmtCuota);
 
+  // ---------- Distribuidora líder ----------
+  // Distribuidoras del fin de semana elegido, de mayor a menor recaudación.
+  // La tarjeta y el gráfico no siguen el filtro de distribuidora: describen el fin de semana entero.
+  function distribuidorasFinde(st) {
+    const d = dash.data('distribuidoras');
+    if (!st || d.status !== 'ok' || !Array.isArray(d.data)) return null;
+    return d.data.filter((x) => x.finde_inicio === st.finde)
+      .sort((a, b) => b.recaudacion_eur - a.recaudacion_eur);
+  }
+  function deLider(nombre, campo, formato) {
+    dash.draw(nombre, (el) => {
+      const st = estado();
+      const filas = distribuidorasFinde(st);
+      const lider = filas && filas.length ? filas[0] : null;
+      marca(el, lider ? {source: 'distribuidoras', field: campo, where: `finde_inicio=${st.finde}&distribuidora=${enc(lider.distribuidora)}`, text: formato(lider[campo])} : null);
+    });
+  }
+  deLider('kpi-dist', 'distribuidora', (v) => v);
+  deLider('kpi-dist-cuota', 'cuota_top25', fmtCuota);
+  deLider('kpi-dist-rec', 'recaudacion_eur', fmtMillones);
+  dash.draw('kpi-dist-n', (el) => {
+    const st = estado();
+    const filas = distribuidorasFinde(st);
+    const lider = filas && filas.length ? filas[0] : null;
+    if (!lider) { marca(el, null); return; }
+    marca(el, {source: 'distribuidoras', field: 'peliculas', where: `finde_inicio=${st.finde}&distribuidora=${enc(lider.distribuidora)}`, text: fmtEntero(lider.peliculas)});
+    el.append(lider.peliculas === 1 ? ' película' : ' películas');
+  });
+
   // ---------- Selectores ----------
   dash.draw('sel-finde', (sel) => {
     const st = estado();
@@ -540,6 +582,66 @@
         .style('pointer-events', 'none');
     }
     ejeFechas(svg, x, datos, alto - m.bottom, x.step()).select('.domain').style('stroke', 'var(--cds-chart-axis)');
+  });
+
+  // ---------- Gráfico de distribuidoras ----------
+  dash.draw('grafico-distribuidoras', (el) => {
+    const st = estado();
+    const filas = distribuidorasFinde(st);
+    if (!filas) { sinDatos(el, 'distribuidoras', 'findes', 'ranking'); return; }
+    el.replaceChildren();
+    if (!filas.length) { el.textContent = 'Sin datos para este fin de semana.'; return; }
+    const ancho = Math.max(280, el.clientWidth || 600);
+    const fila = 30;
+    const alto = filas.length * fila + 8;
+    // Barra destacada: la distribuidora filtrada o, si no hay filtro, la líder.
+    const destacada = st.dist || filas[0].distribuidora;
+    const svg = d3.select(el).append('svg')
+      .attr('width', '100%').attr('height', alto).attr('viewBox', `0 0 ${ancho} ${alto}`)
+      .attr('role', 'img').attr('aria-label', `Cuota de cada distribuidora en la recaudación del Top 25; lidera ${filas[0].distribuidora} con el ${fmtCuota(filas[0].cuota_top25)}`);
+    const tooltip = prepararTooltip(el);
+
+    // Nombres a la izquierda: se miden y, si ocupan más del 40 % del ancho, se recortan.
+    const maxNombre = ancho * 0.4;
+    const nombres = svg.append('g').selectAll('text').data(filas).join('text')
+      .attr('class', 'tq-barlabel')
+      .attr('y', (d, i) => i * fila + fila / 2 + 4)
+      .text((d) => d.distribuidora);
+    nombres.each(function recortarNombre(d) {
+      if (this.getComputedTextLength() <= maxNombre) return;
+      let s = d.distribuidora;
+      while (s.length > 4 && this.getComputedTextLength() > maxNombre) {
+        s = s.slice(0, -1);
+        this.textContent = `${s.trimEnd()}…`;
+      }
+    });
+    const izquierda = Math.min(maxNombre, d3.max(nombres.nodes(), (n) => n.getComputedTextLength()) || 80) + 10;
+    const etiqueta = (d) => `${fmtCuota(d.cuota_top25)} · ${fmtMillones(d.recaudacion_eur)}`;
+    const prueba = svg.append('text').attr('class', 'tq-barlabel').text(etiqueta(filas[0]));
+    const derecha = (prueba.node().getComputedTextLength() || 90) + 12;
+    prueba.remove();
+    nombres.attr('x', izquierda - 10).attr('text-anchor', 'end');
+
+    const x = d3.scaleLinear().domain([0, d3.max(filas, (d) => d.cuota_top25)]).range([izquierda, ancho - derecha]);
+    svg.append('g').selectAll('rect').data(filas).join('rect')
+      .attr('class', 'tq-bar')
+      .attr('x', izquierda).attr('y', (d, i) => i * fila + 5)
+      .attr('width', (d) => Math.max(2, x(d.cuota_top25) - izquierda)).attr('height', fila - 10)
+      .attr('rx', 3)
+      .style('fill', (d) => (d.distribuidora === destacada ? dash.colors[0] : 'var(--cds-chart-muted)'))
+      .on('pointermove', (e, d) => tooltip.mostrar(e, [
+        [d.distribuidora],
+        [`${fmtEuros(d.recaudacion_eur)} · ${fmtCuota(d.cuota_top25)} del Top 25`, true],
+        [`${fmtEntero(d.peliculas)} ${d.peliculas === 1 ? 'película' : 'películas'}`, true],
+      ]))
+      .on('pointerleave', () => tooltip.ocultar())
+      .on('click', (e, d) => dash.setParams({distribuidora: d.distribuidora === st.dist ? '' : d.distribuidora, pelicula: ''}));
+
+    svg.append('g').selectAll('text').data(filas).join('text')
+      .attr('class', 'tq-barlabel')
+      .attr('x', (d) => Math.max(izquierda + 2, x(d.cuota_top25)) + 6)
+      .attr('y', (d, i) => i * fila + fila / 2 + 4)
+      .text(etiqueta);
   });
 
   // ---------- Tabla ----------
