@@ -1,0 +1,103 @@
+# Genera el boletín semanal en cuanto se sube un PDF nuevo a data/raw/.
+#
+# Por qué se activa con la subida y no con un horario: la web del Ministerio
+# no permite descargas automáticas, así que Tania sube el PDF a mano y este
+# flujo hace el resto (extraer, validar, generar boletín y animación) y
+# guarda los resultados en el repositorio.
+
+name: Boletín semanal
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/raw/**.pdf"
+  # Botón «Run workflow» en la pestaña Actions, por si hay que repetirlo.
+  workflow_dispatch:
+
+# Necesario para que el flujo pueda guardar el histórico y el boletín.
+permissions:
+  contents: write
+
+# Si se suben dos PDFs seguidos, el segundo espera a que termine el primero.
+concurrency:
+  group: boletin-semanal
+  cancel-in-progress: false
+
+jobs:
+  boletin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias de Python
+        run: pip install -r requirements.txt
+
+      # Las fuentes del boletín (Lora e Inter) y ffmpeg para la animación no
+      # vienen en el servidor de GitHub. Sin ellas, el boletín saldría con
+      # DejaVu y la animación fallaría.
+      - name: Instalar fuentes y ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-inter ffmpeg
+          mkdir -p ~/.local/share/fonts
+          for peso in Regular Medium SemiBold Bold; do
+            curl -sSfL -o ~/.local/share/fonts/Lora-$peso.ttf \
+              "https://raw.githubusercontent.com/cyrealtype/Lora-Cyrillic/main/fonts/ttf/Lora-$peso.ttf"
+          done
+          fc-cache -f
+
+      - name: Extraer los PDFs nuevos
+        id: extraer
+        run: |
+          python src/extraer_pdf.py
+          # Si el histórico no ha cambiado, no hay nada más que hacer.
+          if git diff --quiet data/processed/; then
+            echo "nuevos=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "nuevos=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Si la validación da error, el flujo se detiene aquí y no se guarda
+      # nada: el histórico del repositorio queda como estaba.
+      - name: Validar
+        if: steps.extraer.outputs.nuevos == 'si'
+        run: |
+          python src/validar.py | tee validacion.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Generar boletín y animación
+        if: steps.extraer.outputs.nuevos == 'si'
+        run: |
+          python src/generar_boletin.py
+          python src/generar_animacion.py --gif
+
+      # Resumen visible en la pestaña Actions, con los avisos del validador.
+      - name: Resumen
+        if: always() && steps.extraer.outputs.nuevos == 'si'
+        run: |
+          {
+            echo "## Validación"
+            echo '```'
+            cat validacion.txt 2>/dev/null || echo "No se llegó a validar."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Lo que guarda este paso no vuelve a activar el flujo: GitHub no
+      # lanza flujos a partir de los cambios hechos por el propio flujo.
+      - name: Guardar resultados en el repositorio
+        if: steps.extraer.outputs.nuevos == 'si'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/processed boletines
+          finde=$(ls boletines | sort | tail -1)
+          git commit -m "Boletín del fin de semana $finde (automático)"
+          git push

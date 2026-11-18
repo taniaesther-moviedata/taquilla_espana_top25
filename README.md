@@ -49,6 +49,10 @@ taquilla_espana_top25/
 
 Instalación: `pip install -r requirements.txt`
 
+### Automatización con GitHub Actions
+
+Los pasos 2 a 5 se ejecutan solos con el flujo `.github/workflows/boletin_semanal.yml`: al subir un PDF a `data/raw/` en la rama `main`, GitHub extrae, valida, genera el boletín y la animación y guarda los resultados en el repositorio con un commit automático. Si la validación da error, el flujo se detiene y no guarda nada; el detalle aparece en la pestaña **Actions**. También se puede lanzar a mano desde **Actions → Boletín semanal → Run workflow**. Después de que termine, hay que hacer `git pull` antes de trabajar en local.
+
 ## Notas sobre los datos
 
 - La película se identifica entre fines de semana por `titulo_original` + `distribuidora`.
