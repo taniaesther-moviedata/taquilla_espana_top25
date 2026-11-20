@@ -1,4 +1,4 @@
-"""Genera el boletín para LinkedIn como un PDF de tres páginas.
+"""Genera el boletín para LinkedIn como un PDF de cuatro páginas.
 
 Uso:
     python src/generar_boletin.py                 # último fin de semana del histórico
@@ -8,6 +8,7 @@ Salida: boletines/<viernes>/boletin_<viernes>.pdf, para publicar como documento.
     Página 1: cabecera, número 1, cifras clave y top 10
     Página 2: ranking completo
     Página 3: trayectoria y entradas y salidas
+    Página 4: distribuidoras (líder y cuota de cada una en el Top 25)
 
 Las páginas son verticales 4:5 (1080 x 1350 puntos de diseño) y vectoriales.
 Las métricas siguen las definiciones de las reglas del proyecto (sección 5).
@@ -91,6 +92,11 @@ def fmt_pct(v):
     return f"{signo}{abs(p)} %"
 
 
+def fmt_cuota(v):
+    """Cuota sin decimales; por debajo del 0,5 % se escribe «<1 %» en vez de «0 %»."""
+    return "<1 %" if v < 0.005 else f"{round(v * 100)} %"
+
+
 def fmt_eje(v):
     """Etiqueta corta para el límite de un eje: 8 M€, 400 mil €."""
     if v >= 1e6:
@@ -137,6 +143,7 @@ class Boletin:
     salidas: pd.DataFrame
     trayectoria: pd.DataFrame
     findes_trayectoria: pd.DataFrame
+    distribuidoras: pd.DataFrame
 
 
 def preparar_datos(h, viernes=None):
@@ -178,6 +185,15 @@ def preparar_datos(h, viernes=None):
     salidas = prev.merge(cur[CLAVE], on=CLAVE, how="left", indicator=True)
     salidas = salidas[salidas["_merge"] == "left_only"].sort_values("rank")
 
+    # Distribuidoras: suma de sus películas del Top 25 en el fin de semana.
+    distribuidoras = (ranking.groupby("distribuidora")
+                      .agg(recaudacion_eur=("recaudacion_eur", "sum"),
+                           peliculas=("rank", "size"),
+                           titulos=("titulo_mostrar", list))
+                      .sort_values("recaudacion_eur", ascending=False)
+                      .reset_index())
+    distribuidoras["cuota"] = distribuidoras["recaudacion_eur"] / act["recaudacion_eur"]
+
     lider = ranking.iloc[0]
     resumen = {
         "recaudacion": act["recaudacion_eur"],
@@ -190,6 +206,7 @@ def preparar_datos(h, viernes=None):
         "estrenos": int((ranking["semana_en_cartel"] == 1).sum()),
         "lider": lider,
         "cuota_lider": lider["recaudacion_eur"] / act["recaudacion_eur"],
+        "dist_lider": distribuidoras.iloc[0],
     }
 
     # Trayectoria: cinco mejor situadas con al menos dos fines de semana en cartel.
@@ -201,7 +218,7 @@ def preparar_datos(h, viernes=None):
     tray["nombre"] = tray["rank_actual"].map(nombres)
 
     return Boletin(actual, act["finde_fin"], resumen, ranking, salidas, tray,
-                   totales.loc[ultimos].reset_index())
+                   totales.loc[ultimos].reset_index(), distribuidoras)
 
 
 # ---------- Ayudas de dibujo ----------
@@ -238,6 +255,88 @@ def recortar(ax, s, ancho_max, tam, fuente=None, peso="normal"):
     return s.rstrip() + "…"
 
 
+_ANCHOS = {}
+
+
+def ancho_texto(ax, s, tam, fuente=None, peso="normal"):
+    """Ancho de un texto en puntos de diseño (con caché, porque se mide mucho)."""
+    clave = (s, tam, fuente or SANS, peso)
+    if clave not in _ANCHOS:
+        fig = ax.figure
+        obj = ax.text(0, 0, s, fontsize=tam, family=fuente or SANS, weight=peso)
+        _ANCHOS[clave] = obj.get_window_extent(renderer=fig.canvas.get_renderer()).width * 100 / fig.dpi
+        obj.remove()
+    return _ANCHOS[clave]
+
+
+_ALTOS = {}
+
+
+def alto_lineas(n, tam, interlineado=1.1, fuente=None, peso="normal"):
+    """Alto real de n líneas de texto en puntos de diseño, medido con el renderizador."""
+    clave = (n, tam, interlineado, fuente or SANS, peso)
+    if clave not in _ALTOS:
+        fig = plt.figure(figsize=(ANCHO / 100, ALTO / 100), dpi=100)
+        obj = fig.text(0, 0, "\n".join(["Ág"] * n), fontsize=tam, family=fuente or SANS,
+                       weight=peso, linespacing=interlineado)
+        _ALTOS[clave] = obj.get_window_extent(renderer=fig.canvas.get_renderer()).height
+        plt.close(fig)
+    return _ALTOS[clave]
+
+
+def en_dos_lineas(ax, s, ancho_max, tam, fuente=None, peso="normal"):
+    """Parte el texto en dos líneas lo más parecidas posible; None si no cabe."""
+    palabras = s.split()
+    mejor = None
+    for i in range(1, len(palabras)):
+        a, b = " ".join(palabras[:i]), " ".join(palabras[i:])
+        m = max(ancho_texto(ax, a, tam, fuente, peso), ancho_texto(ax, b, tam, fuente, peso))
+        if m <= ancho_max and (mejor is None or m < mejor[0]):
+            mejor = (m, [a, b])
+    return mejor[1] if mejor else None
+
+
+def ajustar(ax, s, ancho_max, tam, tam_min, lineas=2, tam_una_linea=None, fuente=None,
+            peso="normal"):
+    """Hace caber un texto en ancho_max sin perder legibilidad.
+
+    Orden de preferencia, para que el título se lea entero siempre que se pueda:
+    1. una línea, reduciendo la letra como mucho hasta tam_una_linea;
+    2. dos líneas equilibradas, reduciendo hasta tam_min;
+    3. solo si ni así cabe, dos líneas con «…» al final de la segunda.
+    Devuelve (lista de líneas, tamaño de letra).
+    """
+    tam_una_linea = tam_una_linea or tam_min
+    t = tam
+    while t >= tam_una_linea - 1e-9:
+        if ancho_texto(ax, s, t, fuente, peso) <= ancho_max:
+            return [s], t
+        t -= 0.5
+    if lineas >= 2:
+        t = min(tam, tam_una_linea)
+        while t >= tam_min - 1e-9:
+            partes = en_dos_lineas(ax, s, ancho_max, t, fuente, peso)
+            if partes:
+                return partes, t
+            t -= 0.5
+        palabras, primera = s.split(), []
+        while palabras and ancho_texto(ax, " ".join(primera + palabras[:1]), tam_min, fuente,
+                                       peso) <= ancho_max:
+            primera.append(palabras.pop(0))
+        if primera:
+            return [" ".join(primera), recortar(ax, " ".join(palabras), ancho_max, tam_min,
+                                                fuente, peso)], tam_min
+    return [recortar(ax, s, ancho_max, tam_min, fuente, peso)], tam_min
+
+
+def texto_ajustado(ax, x, y, s, ancho_max, tam, tam_min, lineas=2, tam_una_linea=None,
+                   color=NEGRO, fuente=None, peso="normal", **kw):
+    """Escribe un texto ajustado con ajustar() y devuelve su alto en puntos de diseño."""
+    partes, t = ajustar(ax, s, ancho_max, tam, tam_min, lineas, tam_una_linea, fuente, peso)
+    texto(ax, x, y, "\n".join(partes), t, color, fuente, peso, linespacing=1.1, **kw)
+    return alto_lineas(len(partes), t, 1.1, fuente, peso)
+
+
 def tarjeta(ax, x, y, w, h, relleno="white", borde=TAN):
     return ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=14",
                                        linewidth=1.2, edgecolor=borde, facecolor=relleno))
@@ -251,7 +350,10 @@ def cabecera(ax, b, subtitulo=None):
         texto(ax, MARGEN, 178, subtitulo, 22, NEGRO, SERIF)
 
 
-def pie(ax, pagina, total=3):
+PAGINAS = 4
+
+
+def pie(ax, pagina, total=PAGINAS):
     ax.plot([MARGEN, ANCHO - MARGEN], [ALTO - 82, ALTO - 82], color=TAN, lw=1)
     texto(ax, MARGEN, ALTO - 68,
           "Fuente: Ministerio de Cultura / ICAA, datos elaborados por Rentrak. "
@@ -270,15 +372,33 @@ def insignia(ax, x, y_centro, s, tam=11):
                                 linewidth=0, facecolor=CARDO, zorder=0.5))
 
 
-def tabla_ranking(ax, filas, y0, alto_fila, columnas, tam=13, distribuidora_debajo=False):
-    """Dibuja filas del ranking. columnas: lista de (clave, título, x, ancho, alineación)."""
+def tabla_ranking(ax, filas, y0, alto_fila, columnas, tam=13, distribuidora_debajo=False,
+                  y_max=None):
+    """Dibuja filas del ranking. columnas: lista de (clave, título, x, ancho, alineación).
+
+    Los títulos largos pasan a dos líneas y su fila crece lo justo. Si con eso la tabla
+    pasara de y_max, todas las filas se acortan un poco para que siga cabiendo.
+    """
+    ancho_titulo = next(w for clave, _, _, w, _ in columnas if clave == "titulo")
+    titulos = [ajustar(ax, f["titulo_mostrar"], ancho_titulo, tam, tam - 2.5, 2,
+                       tam_una_linea=tam - 1.5, peso="medium") for _, f in filas.iterrows()]
+    extra = [alto_lineas(len(p), s, 1.1, peso="medium") - alto_lineas(1, s, 1.1, peso="medium")
+             for p, s in titulos]
+    altos = [alto_fila + e for e in extra]
+    if y_max is not None:
+        disponible = y_max - (y0 + 28)
+        if sum(altos) > disponible:
+            base = (disponible - sum(extra)) / len(altos)
+            altos = [base + e for e in extra]
+
     for clave, titulo, x, w, al in columnas:
         xt = x + w if al == "right" else x
         texto(ax, xt, y0, titulo.upper(), 10.5, GRIS_TEXTO, peso="semibold", ha=al)
     y = y0 + 28
     ax.plot([MARGEN, ANCHO - MARGEN], [y, y], color=TAN, lw=1.2)
-    for _, f in filas.iterrows():
-        yc = y + alto_fila / 2
+    for n, (_, f) in enumerate(filas.iterrows()):
+        alto_fila_n = altos[n]
+        yc = y + alto_fila_n / 2
         for clave, _, x, w, al in columnas:
             xt = x + w if al == "right" else x
             if clave == "rank":
@@ -291,13 +411,19 @@ def tabla_ranking(ax, filas, y0, alto_fila, columnas, tam=13, distribuidora_deba
                     c = BRONCE_TEXTO if m.startswith("▲") else VINO if m.startswith("▼") else GRIS_TEXTO
                     texto(ax, xt, yc, m, tam - 1, c, peso="semibold", ha=al, va="center")
             elif clave == "titulo":
-                nombre = recortar(ax, f["titulo_mostrar"], w, tam, peso="medium")
+                # Primero se reduce un poco la letra; si no basta, dos líneas.
+                partes, t = titulos[n]
+                nombre = "\n".join(partes)
                 if distribuidora_debajo:
-                    texto(ax, x, yc - 3, nombre, tam, NEGRO, peso="medium", va="bottom")
-                    texto(ax, x, yc + 3, recortar(ax, f["distribuidora"], w, tam - 3),
-                          tam - 3, GRIS_TEXTO, va="top")
+                    alto_t = alto_lineas(len(partes), t, 1.1, peso="medium")
+                    alto_d = alto_lineas(1, tam - 3)
+                    arriba = yc - (alto_t + 4 + alto_d) / 2
+                    texto(ax, x, arriba, nombre, t, NEGRO, peso="medium", linespacing=1.1)
+                    texto(ax, x, arriba + alto_t + 4, recortar(ax, f["distribuidora"], w, tam - 3),
+                          tam - 3, GRIS_TEXTO)
                 else:
-                    texto(ax, x, yc, nombre, tam, NEGRO, peso="medium", va="center")
+                    texto(ax, x, yc, nombre, t, NEGRO, peso="medium", va="center",
+                          linespacing=1.05)
             elif clave == "distribuidora":
                 texto(ax, x, yc, recortar(ax, f["distribuidora"], w, tam - 1), tam - 1,
                       GRIS_TEXTO, va="center")
@@ -312,7 +438,7 @@ def tabla_ranking(ax, filas, y0, alto_fila, columnas, tam=13, distribuidora_deba
                       peso="semibold", ha=al, va="center")
             elif clave == "por_cine":
                 texto(ax, xt, yc, fmt_euros(f["por_cine"]), tam, NEGRO, ha=al, va="center")
-        y += alto_fila
+        y += alto_fila_n
         ax.plot([MARGEN, ANCHO - MARGEN], [y, y], color=TAN, lw=0.6, alpha=0.7)
     return y
 
@@ -324,44 +450,68 @@ def pagina_1(b):
     r = b.resumen
     lider = r["lider"]
 
-    # Número 1
-    tarjeta(ax, MARGEN, 186, ANCHO - 2 * MARGEN, 160, relleno=CARDO, borde=CARDO)
+    # Número 1: el recuadro crece si el título necesita dos líneas, y todo lo de
+    # debajo baja lo mismo (dy), así nunca se recorta ni se solapa.
+    alto_titulo = alto_lineas(1, 38, 1.1, SERIF)
+    partes, t = ajustar(ax, lider["titulo_mostrar"], 880, 38, 24, 2, tam_una_linea=30, fuente=SERIF)
+    alto_real = alto_lineas(len(partes), t, 1.1, SERIF)
+    dy = max(0, alto_real - alto_titulo) + (8 if len(partes) > 1 else 0)
+    tarjeta(ax, MARGEN, 186, ANCHO - 2 * MARGEN, 160 + dy, relleno=CARDO, borde=CARDO)
     texto(ax, MARGEN + 32, 208, "Nº 1 DEL FIN DE SEMANA", 12, LAVANDA_TEXTO, peso="semibold")
-    texto(ax, MARGEN + 32, 230, recortar(ax, lider["titulo_mostrar"], 880, 38, SERIF), 38, NEGRO, SERIF)
+    texto(ax, MARGEN + 32, 230 + (alto_titulo - alto_real) / 2 if dy == 0 else 230,
+          "\n".join(partes), t, NEGRO, SERIF, linespacing=1.1)
     detalle = (f"{fmt_millones(lider['recaudacion_eur'])} · {int(lider['semana_en_cartel'])}.ª semana"
                f" en cartel · {round(r['cuota_lider'] * 100)} % del Top 25 · "
                f"{fmt_entero(lider['cines'])} cines")
-    texto(ax, MARGEN + 32, 302, detalle, 15, NEGRO)
+    texto(ax, MARGEN + 32, 302 + dy, detalle, 15, NEGRO)
 
-    # Cifras clave
-    hueco = 16
-    w = (ANCHO - 2 * MARGEN - 3 * hueco) / 4
+    # Cifras clave: cinco tarjetas; cada texto se ajusta a su tarjeta.
+    dist = r["dist_lider"]
+    hueco = 14
+    w = (ANCHO - 2 * MARGEN - 4 * hueco) / 5
+    dentro = w - 32
+    y0 = 368 + dy
     tarjetas = [
-        ("Recaudación Top 25", fmt_millones(r["recaudacion"]),
-         fmt_pct(r["var_recaudacion"]), "vs. finde anterior", r["var_recaudacion"]),
-        ("Espectadores Top 25", fmt_entero(r["espectadores"]),
-         fmt_pct(r["var_espectadores"]), "vs. finde anterior", r["var_espectadores"]),
-        ("Vs. media 4 findes", fmt_pct(r["var_4"]),
-         fmt_millones(r["media_4"]), "media anterior", None),
-        ("Estrenos en el Top 25", str(r["estrenos"]), "", "primer fin de semana", None),
+        ("Recaudación", fmt_millones(r["recaudacion"]), NEGRO,
+         fmt_pct(r["var_recaudacion"]), color_signo(r["var_recaudacion"]), "vs. finde anterior"),
+        ("Espectadores", fmt_entero(r["espectadores"]), NEGRO,
+         fmt_pct(r["var_espectadores"]), color_signo(r["var_espectadores"]), "vs. finde anterior"),
+        ("Vs. media 4 findes", fmt_pct(r["var_4"]), color_signo(r["var_4"]),
+         fmt_millones(r["media_4"]), NEGRO, "media anterior"),
+        ("Estrenos", str(r["estrenos"]), NEGRO,
+         "", NEGRO, "películas en su primer fin de semana"),
+        ("Distribuidora líder", dist["distribuidora"], NEGRO,
+         f"{fmt_cuota(dist['cuota'])} del Top 25", NEGRO,
+         f"{fmt_millones(dist['recaudacion_eur'])} · {dist['peliculas']} "
+         f"{'película' if dist['peliculas'] == 1 else 'películas'}"),
     ]
-    for k, (etq, valor, delta, nota, signo) in enumerate(tarjetas):
+    # Etiquetas y notas con el mismo tamaño en todas las tarjetas: el mayor que quepa en todas.
+    tam_etq = min(ajustar(ax, e, dentro, 12, 10, 1, peso="semibold")[1] for e, *_ in tarjetas)
+    tam_nota = min(ajustar(ax, n, dentro, 11, 9.5, 1)[1] for *_, d, _, n in tarjetas if d)
+    for k, (etq, valor, color_valor, delta, color_delta, nota) in enumerate(tarjetas):
         x = MARGEN + k * (w + hueco)
-        tarjeta(ax, x, 368, w, 146)
-        texto(ax, x + 20, 386, etq, 11.5, GRIS_TEXTO)
-        color_valor = color_signo(r["var_4"]) if k == 2 else NEGRO
-        texto(ax, x + 20, 412, valor, 30, color_valor, SERIF)
-        if delta:
-            t = texto(ax, x + 20, 472, delta, 12.5, color_signo(signo) if signo is not None else NEGRO,
-                      peso="semibold")
-            rend = fig.canvas.get_renderer()
-            dw = t.get_window_extent(renderer=rend).width
-            texto(ax, x + 20 + dw + 6, 472, nota, 11.5, GRIS_TEXTO)
+        tarjeta(ax, x, y0, w, 150, relleno=CARDO if k == 4 else "white",
+                borde=CARDO if k == 4 else TAN)
+        texto(ax, x + 16, y0 + 16, etq, tam_etq, LAVANDA_TEXTO if k == 4 else GRIS_TEXTO,
+              peso="semibold" if k == 4 else "normal")
+        # Los nombres de distribuidora pueden ir en dos líneas; las cifras, siempre en una.
+        if k == 4:
+            partes, t = ajustar(ax, valor, dentro, 26, 14, 2, tam_una_linea=19, fuente=SERIF)
+            texto(ax, x + 16, y0 + 66, "\n".join(partes), t, color_valor, SERIF,
+                  va="center", linespacing=1.05)
         else:
-            texto(ax, x + 20, 472, nota, 11.5, GRIS_TEXTO)
+            texto_ajustado(ax, x + 16, y0 + 42, valor, dentro, 30, 20, 1, color=color_valor,
+                           fuente=SERIF)
+        y_nota = y0 + 98
+        if delta:
+            texto_ajustado(ax, x + 16, y_nota, delta, dentro, 12.5, 10.5, 1, color=color_delta,
+                           peso="semibold")
+            y_nota += 22
+        texto_ajustado(ax, x + 16, y_nota, nota, dentro, tam_nota, 9.5, 2 if not delta else 1,
+                       color=GRIS_TEXTO)
 
     # Top 10
-    texto(ax, MARGEN, 538, "Top 10", 22, NEGRO, SERIF)
+    texto(ax, MARGEN, 542 + dy, "Top 10", 22, NEGRO, SERIF)
     columnas = [
         ("rank", "Pos.", MARGEN, 40, "right"),
         ("movimiento", "Mov.", MARGEN + 62, 110, "left"),
@@ -370,7 +520,8 @@ def pagina_1(b):
         ("recaudacion", "Recaudación", MARGEN + 690, 150, "right"),
         ("var", "Var.", MARGEN + 860, 92, "right"),
     ]
-    tabla_ranking(ax, b.ranking.head(10), 578, 60, columnas, tam=14, distribuidora_debajo=True)
+    tabla_ranking(ax, b.ranking.head(10), 582 + dy, 60, columnas, tam=14, distribuidora_debajo=True,
+                  y_max=ALTO - 100)
     pie(ax, 1)
     return fig
 
@@ -389,7 +540,7 @@ def pagina_2(b):
         ("var", "Var.", MARGEN + 840, 52, "right"),
         ("por_cine", "€/cine", MARGEN + 896, 56, "right"),
     ]
-    y = tabla_ranking(ax, b.ranking, 228, 38, columnas, tam=11.5)
+    y = tabla_ranking(ax, b.ranking, 228, 38, columnas, tam=11.5, y_max=ALTO - 124)
     texto(ax, MARGEN, y + 12, "Var.: recaudación frente al fin de semana anterior. "
           "Reentrada: vuelve al Top 25 sin ser estreno.", 10.5, GRIS_TEXTO)
     pie(ax, 2)
@@ -418,8 +569,8 @@ def pagina_3(b):
         y0 = y_inicio + fila * (h_panel + 18)
         color = SERIES[k % len(SERIES)]
         tarjeta(ax, x0, y0, w, h_panel)
-        texto(ax, x0 + 16, y0 + 14, recortar(ax, f"{rank}. {grupo['nombre'].iloc[0]}", w - 32, 12.5,
-                                             peso="semibold"), 12.5, NEGRO, peso="semibold")
+        texto_ajustado(ax, x0 + 16, y0 + 14, f"{rank}. {grupo['nombre'].iloc[0]}", w - 32, 12.5,
+                       10, 1, color=NEGRO, peso="semibold")
         g = fig.add_axes([(x0 + 18) / ANCHO, 1 - (y0 + h_panel - 30) / ALTO,
                           (w - 36) / ANCHO, (h_panel - 96) / ALTO])
         g.set_facecolor("white")
@@ -466,10 +617,10 @@ def pagina_3(b):
             return y + 28
         for _, f in filas.iterrows():
             principal, secundario = linea(f)
-            texto(ax, x, y, recortar(ax, principal, col_w - 110, 12.5, peso="medium"),
-                      12.5, NEGRO, peso="medium")
+            alto = texto_ajustado(ax, x, y, principal, col_w - 110, 12.5, 11, 2,
+                                  tam_una_linea=11.5, color=NEGRO, peso="medium")
             texto(ax, x + col_w, y, secundario, 12.5, GRIS_TEXTO, ha="right")
-            y += 28
+            y += 28 + max(0, alto - alto_lineas(1, 12.5, 1.1, peso="medium"))
         return y
 
     yfin = lista(MARGEN, ytit + 48, f"Estrenos ({len(estrenos)})", estrenos,
@@ -482,6 +633,55 @@ def pagina_3(b):
     return fig
 
 
+def pagina_4(b):
+    fig, ax = nueva_pagina()
+    cabecera(ax, b, "Distribuidoras")
+    d = b.distribuidoras
+    lider = d.iloc[0]
+
+    # Distribuidora líder, con las películas que aportan su recaudación
+    tarjeta(ax, MARGEN, 226, ANCHO - 2 * MARGEN, 166, relleno=CARDO, borde=CARDO)
+    texto(ax, MARGEN + 32, 246, "DISTRIBUIDORA LÍDER DEL FIN DE SEMANA", 12, LAVANDA_TEXTO,
+          peso="semibold")
+    texto_ajustado(ax, MARGEN + 32, 268, lider["distribuidora"], 880, 34, 24, 1, fuente=SERIF)
+    n = lider["peliculas"]
+    detalle = (f"{fmt_cuota(lider['cuota'])} del Top 25 · {fmt_millones(lider['recaudacion_eur'])}"
+               f" · {n} {'película' if n == 1 else 'películas'}: {', '.join(lider['titulos'])}")
+    texto_ajustado(ax, MARGEN + 32, 338, detalle, 880, 15, 12.5, 2, tam_una_linea=13.5)
+
+    texto(ax, MARGEN, 420, "Cuota de cada distribuidora en la recaudación del Top 25", 15,
+          NEGRO, peso="semibold")
+    texto(ax, MARGEN, 444, "Suma de lo que recaudaron sus películas del Top 25 en el fin de semana.",
+          11.5, GRIS_TEXTO)
+
+    # Barras horizontales: nombre a la izquierda, cuota, importe y películas a la derecha.
+    y_ini, y_fin = 482, ALTO - 110
+    fila = min(50, (y_fin - y_ini) / len(d))
+    tam = 14 if fila >= 44 else 13 if fila >= 36 else 11.5
+    x_nombre = MARGEN + 250
+    etiquetas = [f"{fmt_cuota(f['cuota'])} · {fmt_millones(f['recaudacion_eur'])} · "
+                 f"{f['peliculas']} {'pel.' if f['peliculas'] == 1 else 'pels.'}"
+                 for _, f in d.iterrows()]
+    ancho_etq = max(ancho_texto(ax, e, tam, peso="semibold") for e in etiquetas) + 14
+    x_barra, x_tope = x_nombre + 14, ANCHO - MARGEN - ancho_etq
+    maximo = d["cuota"].max()
+    for i, (_, f) in enumerate(d.iterrows()):
+        yc = y_ini + fila * (i + 0.5)
+        es_lider = i == 0
+        texto_ajustado(ax, x_nombre, yc, f["distribuidora"], 236, tam, tam - 2.5,
+                       2 if fila >= 36 else 1, tam_una_linea=tam - 1, color=NEGRO,
+                       peso="semibold" if es_lider else "normal", ha="right", va="center",
+                       multialignment="right")
+        largo = max(3, (x_tope - x_barra) * f["cuota"] / maximo)
+        ax.add_patch(FancyBboxPatch((x_barra, yc - fila * 0.32), largo, fila * 0.64,
+                                    boxstyle="round,pad=0,rounding_size=4", linewidth=0,
+                                    facecolor=LAVANDA if es_lider else CARDO))
+        texto(ax, x_barra + largo + 10, yc, etiquetas[i], tam, NEGRO if es_lider else GRIS_TEXTO,
+              peso="semibold" if es_lider else "normal", va="center")
+    pie(ax, 4)
+    return fig
+
+
 def main():
     viernes = sys.argv[1] if len(sys.argv) > 1 else None
     h = pd.read_csv(HISTORICO)
@@ -489,7 +689,7 @@ def main():
     salida = DIR_BOLETINES / b.finde_inicio
     salida.mkdir(parents=True, exist_ok=True)
 
-    paginas = [pagina_1(b), pagina_2(b), pagina_3(b)]
+    paginas = [pagina_1(b), pagina_2(b), pagina_3(b), pagina_4(b)]
     ruta_pdf = salida / f"boletin_{b.finde_inicio}.pdf"
     with PdfPages(ruta_pdf, metadata={"Title": f"Top 25 del fin de semana · {periodo_largo(b.finde_inicio, b.finde_fin)}",
                                       "Author": "Tania Adrianzen Acero"}) as pdf:
