@@ -25,7 +25,7 @@ taquilla_espana_top25/
 ├── src/
 │   ├── extraer_pdf.py               # PDF -> histórico
 │   ├── validar.py                   # comprobaciones tras cada carga
-│   ├── generar_boletin.py           # boletín para LinkedIn (PDF de tres páginas)
+│   ├── generar_boletin.py           # boletín para LinkedIn (PDF de cuatro páginas)
 │   └── generar_animacion.py         # versión animada del boletín (MP4 4:5 y GIF)
 ├── dashboard/
 │   └── index.html                   # dashboard; se publica en GitHub Pages junto con el histórico
@@ -42,7 +42,7 @@ taquilla_espana_top25/
 1. Descargar el PDF «Top 25» del último fin de semana y subirlo a `data/raw/` con su nombre original.
 2. `python src/extraer_pdf.py` añade al histórico los PDFs que falten.
 3. `python src/validar.py` debe terminar en «Validación correcta». Los errores se corrigen antes de seguir; los avisos se revisan y se anotan abajo si procede.
-4. `python src/generar_boletin.py` crea en `boletines/<viernes>/` el PDF de tres páginas (4:5) para publicar como documento en LinkedIn.
+4. `python src/generar_boletin.py` crea en `boletines/<viernes>/` el PDF de cuatro páginas (4:5) para publicar como documento en LinkedIn: número 1, cifras clave y top 10; ranking completo; trayectoria y entradas y salidas; distribuidoras.
 5. Opcional: `python src/generar_animacion.py --gif` crea la versión animada (MP4 de 12 s, 1080 × 1350, y una copia en GIF).
 6. El dashboard se publica solo en GitHub Pages con el nuevo `top25_historico.csv` (ver abajo).
 7. Redactar el post y programarlo para el viernes a las 11:00.
@@ -78,5 +78,6 @@ Tan `#D2B997`, Lavender Purple `#946FBA`, Cool Steel `#9EA6A5`, Rose Wine `#BF4D
 
 | Fecha | Cambio |
 | --- | --- |
+| 2026-11-20 | Boletín y animación: tarjeta «Distribuidora líder» en las cifras clave; el PDF suma una cuarta página, «Distribuidoras», con la líder y la cuota de cada distribuidora en barras. Los títulos largos ya no se cortan: primero se reduce un poco la letra y, si no basta, pasan a dos líneas (la fila o el recuadro crecen lo necesario); los «…» quedan solo para casos extremos. |
 | 2026-11-20 | El dashboard pasa de Claude Data a GitHub Pages, con el mismo contenido, la paleta del proyecto (Lora e Inter) y modo oscuro. Los filtros quedan en la dirección de la página, así que un enlace copiado conserva la selección. |
 | 2026-11-18 | Nueva tarjeta «Distribuidora líder del fin de semana» (distribuidora con más recaudación en el Top 25, su cuota, su recaudación y su número de películas) y nueva sección con la cuota de cada distribuidora en barras horizontales. Ambas siguen el selector de fin de semana, no el de distribuidora. |

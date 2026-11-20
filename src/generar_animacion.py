@@ -8,7 +8,8 @@ Uso:
 
 Salida en boletines/<viernes>/animacion_<viernes>.mp4 (1080 x 1350, 30 fps, 12 s).
 
-El dashboard se construye por partes: cabecera, cifras clave, top 10 y
+El dashboard se construye por partes: cabecera, cifras clave (con la
+distribuidora líder), top 10 y
 evolución de cinco fines de semana; los últimos segundos quedan fijos para
 que se pueda leer. Los tamaños de letra están pensados para el móvil.
 """
@@ -29,8 +30,9 @@ import pandas as pd  # noqa: E402
 
 from generar_boletin import (  # noqa: E402
     ALTO, ANCHO, BRONCE, CARDO, DIR_BOLETINES, FONDO, GRIS_TEXTO, HISTORICO,
-    LAVANDA, MARGEN, NEGRO, RAIZ, SERIF, TAN, color_signo, etiqueta_finde, fmt_entero, fmt_millones,
-    fmt_pct, nueva_pagina, periodo_largo, preparar_datos, recortar, tarjeta, texto,
+    LAVANDA, LAVANDA_TEXTO, MARGEN, NEGRO, RAIZ, SERIF, TAN, ajustar, color_signo, etiqueta_finde,
+    fmt_cuota, fmt_entero, fmt_millones, fmt_pct, nueva_pagina, periodo_largo, preparar_datos,
+    tarjeta, texto,
 )
 
 FPS = 30
@@ -51,10 +53,21 @@ def avance(t, inicio, duracion):
 def preparar_textos(ax, b):
     """Textos que no cambian entre fotogramas (títulos recortados, etiquetas)."""
     top10 = b.ranking.head(10)
+    hueco = 16
+    w = (ANCHO - 2 * MARGEN - 3 * hueco) / 4
+    dist = b.resumen["dist_lider"]
+    etiquetas = ["Recaudación", "Espectadores", "Vs. media 4 findes", "Distribuidora líder"]
     return {
         "top10": top10,
-        "titulos": [recortar(ax, f["titulo_mostrar"], 348, 17, peso="medium")
-                    for _, f in top10.iterrows()],
+        # Títulos: primero letra algo menor; si no basta, dos líneas (caben en la fila de 54).
+        "titulos": [ajustar(ax, f["titulo_mostrar"], 348, 17, 13.5, 2, tam_una_linea=15,
+                            peso="medium") for _, f in top10.iterrows()],
+        "ancho_tarjeta": w,
+        # El mismo tamaño de etiqueta en las cuatro tarjetas: el mayor que quepa en todas.
+        "etiquetas": etiquetas,
+        "tam_etiqueta": min(ajustar(ax, e, w - 40, 14, 11, 1, peso="semibold")[1] for e in etiquetas),
+        "distribuidora": ajustar(ax, dist["distribuidora"], w - 40, 34, 18, 2, tam_una_linea=24,
+                                 fuente=SERIF),
         "maximo": top10["recaudacion_eur"].max(),
         "findes": b.findes_trayectoria,
     }
@@ -79,26 +92,38 @@ def fotograma(ax, b, c, t):
 
     # ---- Cifras clave ----
     hueco = 16
-    w = (ANCHO - 2 * MARGEN - 2 * hueco) / 3
+    w = c["ancho_tarjeta"]
     y0 = 190
+    dist = r["dist_lider"]
     tarjetas = [
-        ("Recaudación del Top 25", lambda q: f"{r['recaudacion'] * q / 1e6:.1f} M€".replace(".", ","),
+        (lambda q: f"{r['recaudacion'] * q / 1e6:.1f} M€".replace(".", ","),
          NEGRO, fmt_pct(r["var_recaudacion"]), color_signo(r["var_recaudacion"]), "vs. finde anterior"),
-        ("Espectadores del Top 25", lambda q: fmt_entero(r["espectadores"] * q),
+        (lambda q: fmt_entero(r["espectadores"] * q),
          NEGRO, fmt_pct(r["var_espectadores"]), color_signo(r["var_espectadores"]), "vs. finde anterior"),
-        ("Frente a la media de 4 findes", lambda q: fmt_pct(r["var_4"] * q) or "0 %",
-         color_signo(r["var_4"]), fmt_millones(r["media_4"]), NEGRO, "de media"),
+        (lambda q: fmt_pct(r["var_4"] * q) or "0 %",
+         color_signo(r["var_4"]), fmt_millones(r["media_4"]), NEGRO, "media anterior"),
+        (None, NEGRO, fmt_cuota(dist["cuota"]), NEGRO, "del Top 25"),
     ]
-    for k, (etq, valor, color_valor, delta, color_delta, nota) in enumerate(tarjetas):
+    for k, (valor, color_valor, delta, color_delta, nota) in enumerate(tarjetas):
         p = avance(t, 0.6 + 0.25 * k, 0.9)
         if p <= 0:
             continue
         x = MARGEN + k * (w + hueco)
-        tarjeta(ax, x, y0, w, 152).set_alpha(p)
-        texto(ax, x + 20, y0 + 16, etq, 13.5, GRIS_TEXTO, alpha=p)
-        texto(ax, x + 20, y0 + 40, valor(p), 36, color_valor, SERIF, alpha=p)
-        texto(ax, x + 20, y0 + 112, f"{delta}", 15, color_delta, peso="semibold", alpha=p)
-        texto(ax, x + w - 20, y0 + 114, nota, 13, GRIS_TEXTO, alpha=p, ha="right")
+        lider = k == 3
+        tarjeta(ax, x, y0, w, 152, relleno=CARDO if lider else "white",
+                borde=CARDO if lider else TAN).set_alpha(p)
+        texto(ax, x + 20, y0 + 16, c["etiquetas"][k], c["tam_etiqueta"],
+              LAVANDA_TEXTO if lider else GRIS_TEXTO, peso="semibold" if lider else "normal",
+              alpha=p)
+        if lider:
+            partes, tam = c["distribuidora"]
+            texto(ax, x + 20, y0 + 66, "\n".join(partes), tam, NEGRO, SERIF, alpha=p,
+                  va="center", linespacing=1.05)
+        else:
+            texto(ax, x + 20, y0 + 38, valor(p), 34, color_valor, SERIF, alpha=p)
+        # Cifra de contraste y su explicación en dos líneas, para que no se monten.
+        texto(ax, x + 20, y0 + 98, f"{delta}", 15, color_delta, peso="semibold", alpha=p)
+        texto(ax, x + 20, y0 + 122, nota, 13, GRIS_TEXTO, alpha=p)
 
     # ---- Top 10 ----
     p = avance(t, 1.8, 0.6)
@@ -117,7 +142,9 @@ def fotograma(ax, b, c, t):
         estreno = f["semana_en_cartel"] == 1
         texto(ax, MARGEN + 30, yc, str(int(f["rank"])), 20, NEGRO, SERIF, alpha=p,
               ha="right", va="center")
-        texto(ax, MARGEN + 46, yc, c["titulos"][i], 17, NEGRO, peso="medium", alpha=p, va="center")
+        partes, tam = c["titulos"][i]
+        texto(ax, MARGEN + 46, yc, "\n".join(partes), tam, NEGRO, peso="medium", alpha=p,
+              va="center", linespacing=1.05)
         largo = ancho_max * f["recaudacion_eur"] / c["maximo"] * p
         ax.add_patch(Rectangle((x_barra, yc - 16), largo, 32, lw=0,
                                color=BRONCE if estreno else LAVANDA))
