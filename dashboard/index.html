@@ -1,4 +1,59 @@
-<meta name="dash-one-writer">
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taquilla España Top 25</title>
+<meta name="description" content="Top 25 de taquilla del fin de semana en los cines de España: recaudación, ranking, distribuidoras y evolución. Análisis de Tania Adrianzen Acero.">
+<meta property="og:title" content="Taquilla España · Top 25 del fin de semana">
+<meta property="og:description" content="Recaudación, ranking, distribuidoras y evolución del Top 25 de taquilla en España, actualizado cada semana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Tokens de diseño: paleta del proyecto (Tan, Lavender Purple, Cool Steel,
+     Rose Wine, Golden Bronze, Thistle, Black). Sustituyen a los de Claude Data. */
+  :root {
+    color-scheme: light;
+    --color-fg: #060200; --color-fg-muted: #5E6463; --color-bg: #FBF8F3; --color-panel: #FFFFFF;
+    --color-border-line: #E6DCCB; --color-ok: #8A6A1F; --color-bad: #BF4D70;
+    --cds-chart-muted: #D2C5DE; --cds-chart-grid: #EEE7DC; --cds-chart-axis: #CFC5B5; --cds-chart-reference: #5E6463;
+    --cds-text-secondary: #5E6463; --cds-surface-popover: #FFFFFF; --cds-border: #E6DCCB;
+    --cds-shadow-popover: 0 4px 16px rgba(6, 2, 0, .12);
+    --font-anthropic-sans: "Inter", system-ui, sans-serif; --font-anthropic-serif: "Lora", Georgia, serif;
+    --cds-font-size-caption: .8125rem; --cds-font-size-body: .9375rem; --cds-font-size-heading: 1.125rem; --cds-font-size-title: 2rem;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 20px; --cds-gap-xl: 32px;
+    --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 16px; --cds-radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --color-fg: #F3EEE7; --color-fg-muted: #A9AFAE; --color-bg: #15110D; --color-panel: #1F1A15;
+      --color-border-line: #3A322A; --color-ok: #D9B45A; --color-bad: #E07A98;
+      --cds-chart-muted: #4A3F57; --cds-chart-grid: #2C261F; --cds-chart-axis: #4A4238; --cds-chart-reference: #A9AFAE;
+      --cds-text-secondary: #A9AFAE; --cds-surface-popover: #26201A; --cds-border: #3A322A;
+      --cds-shadow-popover: 0 4px 16px rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-fg: #F3EEE7; --color-fg-muted: #A9AFAE; --color-bg: #15110D; --color-panel: #1F1A15;
+    --color-border-line: #3A322A; --color-ok: #D9B45A; --color-bad: #E07A98;
+    --cds-chart-muted: #4A3F57; --cds-chart-grid: #2C261F; --cds-chart-axis: #4A4238; --cds-chart-reference: #A9AFAE;
+    --cds-text-secondary: #A9AFAE; --cds-surface-popover: #26201A; --cds-border: #3A322A;
+    --cds-shadow-popover: 0 4px 16px rgba(0, 0, 0, .5);
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); }
+  #dash-root { max-width: 980px; margin: 0 auto; padding: 32px 16px 48px; box-sizing: border-box; }
+  .dash-select { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background-color: var(--color-panel);
+    border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 7px 32px 7px 10px; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239EA6A5' stroke-width='1.6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; }
+  .tq-actualizado { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .tq-actualizado a { color: inherit; }
+</style>
 <style>
   .tq { display: flex; flex-direction: column; gap: var(--cds-gap-xl); color: var(--color-fg); font-family: var(--font-anthropic-sans); }
   .tq-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
@@ -55,7 +110,9 @@
   .tq-big-texto { font-size: 1.45rem; line-height: 1.2; overflow-wrap: anywhere; }
   .tq-chart-dist { min-height: 160px; }
 </style>
-
+</head>
+<body>
+<div id="dash-root">
 <div class="tq">
   <header class="tq-head" id="cabecera">
     <p class="tq-kicker">Boletín semanal · Taquilla en España</p>
@@ -166,9 +223,92 @@
   <footer class="tq-foot" id="pie">
     <p class="tq-note">Fuente: Ministerio de Cultura / ICAA, datos elaborados por Rentrak (no son datos oficiales del ICAA). «Top 25» es la suma de las 25 películas del informe, no la taquilla total. Las variaciones se calculan con el histórico propio.</p>
     <p class="tq-note">Análisis: Tania Adrianzen Acero</p>
+    <p class="tq-actualizado">Se actualiza cada semana con el PDF del Ministerio. Código y datos: <a href="https://github.com/taniaesther-moviedata/taquilla_espana_top25">github.com/taniaesther-moviedata/taquilla_espana_top25</a></p>
   </footer>
 </div>
-
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function () {
+  const calcs = [];
+  const dibujos = new Map();
+  const alCambiar = [];
+  const almacen = {historico: {status: 'loading', data: []}};
+  const leerFiltros = () => Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+  let filtros = leerFiltros();
+  const escribirFiltros = () => {
+    const q = new URLSearchParams(filtros).toString();
+    history.replaceState(null, '', q ? `#${q}` : location.pathname + location.search);
+  };
+  let pendiente = false;
+  function pintar() {
+    alCambiar.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
+    dibujos.forEach((fn, nombre) => {
+      document.querySelectorAll(`[data-draw="${nombre}"]`).forEach((el) => {
+        try { fn(el); } catch (e) { console.error(nombre, e); }
+      });
+    });
+  }
+  function programar() {
+    if (pendiente) return;
+    pendiente = true;
+    requestAnimationFrame(() => { pendiente = false; pintar(); });
+  }
+  function calcular() {
+    for (const c of calcs) {
+      try {
+        const entradas = c.inputs.map((i) => (almacen[i] && almacen[i].status === 'ok' ? almacen[i].data : []));
+        almacen[c.id] = {status: 'ok', data: c.fn(...entradas)};
+      } catch (e) {
+        console.error(c.id, e);
+        almacen[c.id] = {status: 'error', data: null};
+      }
+    }
+  }
+  async function cargar() {
+    // Publicado, el CSV está junto a la página; en el repositorio, en data/processed/.
+    for (const url of ['top25_historico.csv', '../data/processed/top25_historico.csv']) {
+      try {
+        const r = await fetch(url, {cache: 'no-cache'});
+        if (!r.ok) continue;
+        almacen.historico = {status: 'ok', data: d3.csvParse(await r.text())};
+        calcular();
+        programar();
+        return;
+      } catch (e) { /* se prueba la siguiente ruta */ }
+    }
+    almacen.historico = {status: 'error', data: []};
+    calcs.forEach((c) => { almacen[c.id] = {status: 'error', data: null}; });
+    programar();
+  }
+  window.dash = {
+    colors: ['#946FBA', '#C4972E', '#BF4D70', '#9EA6A5', '#D2B997', '#5E3F82'],
+    calc(id, cfg) { calcs.push({id, ...cfg}); almacen[id] = {status: 'loading', data: null}; },
+    data(id) { return almacen[id] || {status: 'missing', data: []}; },
+    draw(nombre, fn) { dibujos.set(nombre, fn); },
+    onData(fn) { alCambiar.push(fn); },
+    params() { return {...filtros}; },
+    setParams(p) {
+      for (const [k, v] of Object.entries(p)) {
+        if (v === '' || v === null || v === undefined) delete filtros[k]; else filtros[k] = String(v);
+      }
+      escribirFiltros();
+      programar();
+    },
+    resetParams() { filtros = {}; escribirFiltros(); programar(); },
+    _iniciar() {
+      programar();
+      cargar();
+      let ancho = document.documentElement.clientWidth;
+      new ResizeObserver(() => {
+        const nuevo = document.documentElement.clientWidth;
+        if (nuevo !== ancho) { ancho = nuevo; programar(); }
+      }).observe(document.body);
+      window.addEventListener('hashchange', () => { filtros = leerFiltros(); programar(); });
+    },
+  };
+})();
+</script>
 <script>
   // ---------- Cálculos (para todos los fines de semana del histórico) ----------
   dash.calc('findes', {
@@ -790,3 +930,6 @@
     for (const f of filas) elemento(ul, f.titulo_mostrar, `· era la ${f.rank_anterior}.ª · ${fmtMillones(f.recaudacion_ultimo_finde)} el fin de semana anterior`);
   });
 </script>
+<script>dash._iniciar();</script>
+</body>
+</html>

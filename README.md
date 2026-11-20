@@ -10,7 +10,7 @@ Autora: Tania Adrianzen Acero.
 
 Cita en el boletín: «Fuente: Ministerio de Cultura / ICAA, datos elaborados por Rentrak».
 
-**Dashboard interactivo:** [Taquilla España · Top 25 del fin de semana](https://claude.ai/artifact/UtmKbXVYMyQ1AhRdVoYDfK). Se actualiza cada semana y el selector permite consultar los fines de semana anteriores.
+**Dashboard interactivo:** [Taquilla España · Top 25 del fin de semana](https://taniaesther-moviedata.github.io/taquilla_espana_top25/), publicado con GitHub Pages. Se actualiza solo cada vez que se carga un PDF nuevo, y el selector permite consultar los fines de semana anteriores.
 
 ## Estructura
 
@@ -28,7 +28,7 @@ taquilla_espana_top25/
 │   ├── generar_boletin.py           # boletín para LinkedIn (PDF de tres páginas)
 │   └── generar_animacion.py         # versión animada del boletín (MP4 4:5 y GIF)
 ├── dashboard/
-│   └── index.html                   # copia de la página del dashboard de Claude Data
+│   └── index.html                   # dashboard; se publica en GitHub Pages junto con el histórico
 ├── boletines/
 │   └── AAAA-MM-DD/                  # una carpeta por fin de semana (fecha del viernes)
 │       ├── boletin_AAAA-MM-DD.pdf
@@ -44,7 +44,7 @@ taquilla_espana_top25/
 3. `python src/validar.py` debe terminar en «Validación correcta». Los errores se corrigen antes de seguir; los avisos se revisan y se anotan abajo si procede.
 4. `python src/generar_boletin.py` crea en `boletines/<viernes>/` el PDF de tres páginas (4:5) para publicar como documento en LinkedIn.
 5. Opcional: `python src/generar_animacion.py --gif` crea la versión animada (MP4 de 12 s, 1080 × 1350, y una copia en GIF).
-6. Actualizar el dashboard de Claude Data con el nuevo `top25_historico.csv`.
+6. El dashboard se publica solo en GitHub Pages con el nuevo `top25_historico.csv` (ver abajo).
 7. Redactar el post y programarlo para el viernes a las 11:00.
 
 Instalación: `pip install -r requirements.txt`
@@ -52,6 +52,8 @@ Instalación: `pip install -r requirements.txt`
 ### Automatización con GitHub Actions
 
 Los pasos 2 a 5 se ejecutan solos con el flujo `.github/workflows/boletin_semanal.yml`: al subir un PDF a `data/raw/` en la rama `main`, GitHub extrae, valida, genera el boletín y la animación y guarda los resultados en el repositorio con un commit automático. Si la validación da error, el flujo se detiene y no guarda nada; el detalle aparece en la pestaña **Actions**. También se puede lanzar a mano desde **Actions → Boletín semanal → Run workflow**. Después de que termine, hay que hacer `git pull` antes de trabajar en local.
+
+Cuando el boletín termina bien, el flujo `.github/workflows/publicar_dashboard.yml` publica en GitHub Pages `dashboard/index.html` y el histórico actualizado. También se ejecuta al cambiar el dashboard o el histórico en `main`, y a mano desde **Actions → Publicar dashboard → Run workflow**. La web solo incluye la página y el CSV, no los PDFs ni los boletines. Para ver el dashboard en local hay que servir la carpeta del repositorio (`python -m http.server` y abrir `/dashboard/`), porque el navegador no deja leer el CSV abriendo el archivo directamente.
 
 ## Notas sobre los datos
 
@@ -70,9 +72,11 @@ Tan `#D2B997`, Lavender Purple `#946FBA`, Cool Steel `#9EA6A5`, Rose Wine `#BF4D
 | Fin de semana | Fecha de carga | Incidencias |
 | --- | --- | --- |
 | 2 oct. – 8 nov. 2026 (6 fines de semana) | 2026-11-12 | Carga inicial. Validación correcta; avisos de origen anotados arriba. |
+| 13-15 nov. 2026 | 2026-11-20 | Primera carga con GitHub Actions. El PDF no estaba publicado el jueves a mediodía; se subió el viernes. Validación correcta, con un aviso de origen: «La odisea», +28 % de recaudación y +1 % de espectadores según el PDF. |
 
 ## Cambios en la estructura del dashboard
 
 | Fecha | Cambio |
 | --- | --- |
+| 2026-11-20 | El dashboard pasa de Claude Data a GitHub Pages, con el mismo contenido, la paleta del proyecto (Lora e Inter) y modo oscuro. Los filtros quedan en la dirección de la página, así que un enlace copiado conserva la selección. |
 | 2026-11-18 | Nueva tarjeta «Distribuidora líder del fin de semana» (distribuidora con más recaudación en el Top 25, su cuota, su recaudación y su número de películas) y nueva sección con la cuota de cada distribuidora en barras horizontales. Ambas siguen el selector de fin de semana, no el de distribuidora. |

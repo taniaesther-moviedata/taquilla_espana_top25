@@ -1,0 +1,63 @@
+# Publica el dashboard en GitHub Pages con el histórico más reciente.
+#
+# Por qué es un flujo aparte: el flujo «Boletín semanal» guarda el histórico
+# con un commit automático, y GitHub no lanza flujos a partir de esos commits.
+# Por eso este se activa cuando el boletín termina bien (workflow_run), además
+# de cuando Tania cambia el dashboard o el histórico a mano.
+
+name: Publicar dashboard
+
+on:
+  workflow_run:
+    workflows: ["Boletín semanal"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - "data/processed/top25_historico.csv"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una sola publicación a la vez; si llega otra, sustituye a la que espera.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    # Si el boletín ha fallado (por ejemplo, en la validación), no se publica.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      # Se descarga main tal como está ahora, con el commit automático del boletín.
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # La web solo lleva la página y el CSV: así no se publican los PDFs ni los vídeos.
+      - name: Preparar la web
+        run: |
+          mkdir -p _site
+          cp dashboard/index.html _site/index.html
+          cp data/processed/top25_historico.csv _site/top25_historico.csv
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir la web
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publicar
+        id: despliegue
+        uses: actions/deploy-pages@v4
